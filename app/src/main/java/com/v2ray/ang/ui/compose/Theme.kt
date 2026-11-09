@@ -28,15 +28,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 private val LightColor = lightColorScheme(
-    primary = Color(0xFF00C853), // Terminal Green
+    primary = Color(0xFF006C4C),
     onPrimary = Color(0xFFFFFFFF),
     primaryContainer = Color(0xFFDCFCE7),
     onPrimaryContainer = Color(0xFF00210B),
-    secondary = Color(0xFF00B8D4), // Cyan
+    secondary = Color(0xFF416775),
     onSecondary = Color(0xFFFFFFFF),
     secondaryContainer = Color(0xFFE0F7FA),
     onSecondaryContainer = Color(0xFF001F24),
-    tertiary = Color(0xFF00C853),
+    tertiary = Color(0xFF52648C),
     onTertiary = Color(0xFFFFFFFF),
     tertiaryContainer = Color(0xFFDCFCE7),
     onTertiaryContainer = Color(0xFF00210B),
@@ -56,7 +56,7 @@ private val LightColor = lightColorScheme(
     inverseOnSurface = Color(0xFFF0F4F2),
     inversePrimary = Color(0xFF00FF66),
     scrim = Color(0xFF000000),
-    surfaceTint = Color(0xFF00C853),
+    surfaceTint = Color(0xFF006C4C),
     surfaceContainerLowest = Color(0xFFFFFFFF),
     surfaceContainerLow = Color(0xFFF2F6F4),
     surfaceContainer = Color(0xFFECEFEA),
@@ -65,15 +65,15 @@ private val LightColor = lightColorScheme(
 )
 
 private val DarkColor = darkColorScheme(
-    primary = Color(0xFF00FF66), // Neon Terminal Green
+    primary = Color(0xFF79DAB0),
     onPrimary = Color(0xFF101012), // Dark Obsidian
     primaryContainer = Color(0xFF183B25), // Deep Dark Green
     onPrimaryContainer = Color(0xFF94FFB4), // Soft Mint Green
-    secondary = Color(0xFF00E5FF), // Neon Cyan
+    secondary = Color(0xFFA0CEDD),
     onSecondary = Color(0xFF00363D),
     secondaryContainer = Color(0xFF004D56),
     onSecondaryContainer = Color(0xFFB8F8FF),
-    tertiary = Color(0xFF00FF66),
+    tertiary = Color(0xFFB4C5F0),
     onTertiary = Color(0xFF101012),
     tertiaryContainer = Color(0xFF183B25),
     onTertiaryContainer = Color(0xFF94FFB4),
@@ -93,7 +93,7 @@ private val DarkColor = darkColorScheme(
     inverseOnSurface = Color(0xFF121212),
     inversePrimary = Color(0xFF00CC52),
     scrim = Color(0xFF000000),
-    surfaceTint = Color(0xFF00FF66),
+    surfaceTint = Color(0xFF79DAB0),
     surfaceContainerLowest = Color(0xFF0D0D0F),
     surfaceContainerLow = Color(0xFF16161A),
     surfaceContainer = Color(0xFF1A1A1E),

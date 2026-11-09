@@ -75,7 +75,7 @@ fun MainDrawerContent(drawerState: DrawerState, onNavigate: (MainDestination) ->
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(130.dp),
-                color = Color(0xFF121212)
+                color = MaterialTheme.colorScheme.surface
             ) {
                 Box(
                     modifier = Modifier
