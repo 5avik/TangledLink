@@ -287,6 +287,7 @@
     <string name="summary_pref_tg_group">Join the Telegram group</string>
     <string name="toast_tg_app_not_found">Telegram app not found</string>
     <string name="title_privacy_policy">Privacy policy</string>
+    <string name="privacy_policy_content">TangledVPN Privacy Policy\n\nWe respect your privacy and are committed to protecting your personal data.\n\n1. Data Collection: TangledVPN does not collect, store, or share your personal data, browsing history, logs, or IP addresses with third parties.\n\n2. Network Traffic: All network traffic passes exclusively through the nodes configured by you and is encrypted.\n\n3. Permissions: The app only requests permissions necessary for the Android VPN service to function.\n\nBy using this application, you agree to this Privacy Policy.</string>
     <string name="title_qr_code">QR code</string>
     <string name="title_about">About</string>
     <string name="title_source_code">Source code</string>

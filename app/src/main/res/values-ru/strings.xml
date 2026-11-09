@@ -287,6 +287,7 @@
     <string name="summary_pref_tg_group">Присоединиться к группе в Telegram</string>
     <string name="toast_tg_app_not_found">Приложение Telegram не найдено</string>
     <string name="title_privacy_policy">Политика конфиденциальности</string>
+    <string name="privacy_policy_content">Политика конфиденциальности TangledVPN\n\nМы уважаем вашу конфиденциальность и стремимся защитить ваши личные данные.\n\n1. Сбор информации: Приложение TangledVPN не собирает, не хранит и не передает третьим лицам ваши личные данные, логи посещений, историю браузера или IP-адреса.\n\n2. Сетевой трафик: Весь сетевой трафик проходит исключительно через выбранные вами узлы и шифруется.\n\n3. Разрешения: Приложение запрашивает только необходимые разрешения для работы службы VPN в Android.\n\nИспользуя приложение, вы соглашаетесь с данной политикой конфиденциальности.</string>
     <string name="title_qr_code">QR-код</string>
     <string name="title_about">О приложении</string>
     <string name="title_source_code">Исходный код</string>

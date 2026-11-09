@@ -1,13 +1,9 @@
 package com.v2ray.ang.ui
 
-import android.content.Intent
 import android.os.Bundle
-import android.webkit.WebView
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -26,7 +22,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.BuildConfig
 import com.v2ray.ang.R
@@ -47,21 +42,17 @@ class AboutActivity : BaseComponentActivity() {
     @Composable
     override fun ScreenContent() {
         AboutScreen(
-            onBackClick = { finish() },
-            onTranslatorsClick = {
-                startActivity(Intent(this, TranslatorsActivity::class.java))
-            }
+            onBackClick = { finish() }
         )
     }
 }
 
 @Composable
 fun AboutScreen(
-    onBackClick: () -> Unit,
-    onTranslatorsClick: () -> Unit
+    onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    var showOssDialog by remember { mutableStateOf(false) }
+    var showPrivacyDialog by remember { mutableStateOf(false) }
 
     val libVersion = CoreNativeManager.getLibVersion()
     val versionText = "v${BuildConfig.VERSION_NAME} ($libVersion)"
@@ -88,16 +79,6 @@ fun AboutScreen(
                 onClick = { Utils.openUri(context, AppConfig.APP_URL) }
             )
             SettingsMenuItem(
-                icon = painterResource(R.drawable.license_24px),
-                title = stringResource(R.string.title_oss_license),
-                onClick = { showOssDialog = true }
-            )
-            SettingsMenuItem(
-                icon = painterResource(R.drawable.ic_translate_24dp),
-                title = stringResource(R.string.title_translators),
-                onClick = onTranslatorsClick
-            )
-            SettingsMenuItem(
                 icon = painterResource(R.drawable.ic_feedback_24dp),
                 title = stringResource(R.string.title_pref_feedback),
                 onClick = { Utils.openUri(context, AppConfig.APP_ISSUES_URL) }
@@ -110,7 +91,7 @@ fun AboutScreen(
             SettingsMenuItem(
                 icon = painterResource(R.drawable.ic_privacy_24dp),
                 title = stringResource(R.string.title_privacy_policy),
-                onClick = { Utils.openUri(context, AppConfig.APP_PRIVACY_POLICY) }
+                onClick = { showPrivacyDialog = true }
             )
             VersionInfoBlock(
                 versionText = versionText,
@@ -120,24 +101,20 @@ fun AboutScreen(
         }
     }
 
-    if (showOssDialog) {
+    if (showPrivacyDialog) {
         AlertDialog(
-            onDismissRequest = { showOssDialog = false },
-            title = { Text(stringResource(R.string.title_oss_license)) },
+            onDismissRequest = { showPrivacyDialog = false },
+            title = { Text(stringResource(R.string.title_privacy_policy)) },
             text = {
-                AndroidView(
-                    factory = { ctx ->
-                        WebView(ctx).apply {
-                            loadUrl("file:///android_asset/open_source_licenses.html")
-                        }
-                    },
+                Text(
+                    text = stringResource(R.string.privacy_policy_content),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 300.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 8.dp)
                 )
             },
             confirmButton = {
-                TextButton(onClick = { showOssDialog = false }) {
+                TextButton(onClick = { showPrivacyDialog = false }) {
                     Text(stringResource(R.string.action_ok))
                 }
             },
