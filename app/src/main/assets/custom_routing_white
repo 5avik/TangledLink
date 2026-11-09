@@ -25,5 +25,20 @@
     "domain": [
       "geosite:private"
     ]
+  },
+  {
+    "remarks": "Исключить российские сайты (RU)",
+    "outboundTag": "direct",
+    "domain": [
+      "domain:ru",
+      "geosite:category-ru"
+    ]
+  },
+  {
+    "remarks": "Исключить российские IP (RU)",
+    "outboundTag": "direct",
+    "ip": [
+       "geoip:ru"
+    ]
   }
 ]

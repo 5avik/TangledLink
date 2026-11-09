@@ -62,17 +62,17 @@ class RoutingSettingsViewModel(application: Application) : BaseViewModel(applica
     }
 
     private fun updateQuickStates() {
-        val lanRule = rulesets.find {
+        val lanRules = rulesets.filter {
             it.outboundTag == TAG_DIRECT &&
-                    (it.ip?.contains("geoip:private") == true || it.domain?.contains("geosite:private") == true || it.remarks == REMARKS_LAN)
+                    (it.ip?.contains("geoip:private") == true || it.domain?.contains("geosite:private") == true || it.remarks?.contains("LAN") == true || it.remarks == REMARKS_LAN)
         }
-        _bypassLanFlow.value = lanRule?.enabled ?: false
+        _bypassLanFlow.value = lanRules.isNotEmpty() && lanRules.any { it.enabled }
 
-        val ruRule = rulesets.find {
+        val ruRules = rulesets.filter {
             it.outboundTag == TAG_DIRECT &&
-                    (it.ip?.contains("geoip:ru") == true || it.domain?.contains("geosite:category-ru") == true || it.domain?.contains("domain:ru") == true || it.remarks == REMARKS_RU)
+                    (it.ip?.contains("geoip:ru") == true || it.domain?.contains("geosite:category-ru") == true || it.domain?.contains("domain:ru") == true || it.remarks?.contains("RU") == true || it.remarks == REMARKS_RU)
         }
-        _bypassRussiaFlow.value = ruRule?.enabled ?: false
+        _bypassRussiaFlow.value = ruRules.isNotEmpty() && ruRules.any { it.enabled }
 
         val directRule = rulesets.find { it.remarks == REMARKS_CUSTOM_DIRECT }
         val directEntries = ((directRule?.domain.orEmpty()) + (directRule?.ip.orEmpty())).distinct()
@@ -84,13 +84,19 @@ class RoutingSettingsViewModel(application: Application) : BaseViewModel(applica
     }
 
     fun toggleBypassLan(enabled: Boolean) {
-        val index = rulesets.indexOfFirst {
+        val lanRules = rulesets.filter {
             it.outboundTag == TAG_DIRECT &&
-                    (it.ip?.contains("geoip:private") == true || it.domain?.contains("geosite:private") == true || it.remarks == REMARKS_LAN)
+                    (it.ip?.contains("geoip:private") == true || it.domain?.contains("geosite:private") == true || it.remarks?.contains("LAN") == true || it.remarks == REMARKS_LAN)
         }
-        if (index >= 0) {
-            val updated = rulesets[index].copy(enabled = enabled)
-            update(index, updated)
+        if (lanRules.isNotEmpty()) {
+            lanRules.forEach { rule ->
+                val index = rulesets.indexOf(rule)
+                if (index >= 0) {
+                    rulesets[index] = rule.copy(enabled = enabled)
+                }
+            }
+            MmkvManager.encodeRoutingRulesets(rulesets)
+            _rulesetsFlow.value = rulesets.toList()
         } else {
             val newRule = RulesetItem(
                 id = UUID.randomUUID().toString(),
@@ -108,27 +114,36 @@ class RoutingSettingsViewModel(application: Application) : BaseViewModel(applica
     }
 
     fun toggleBypassRussia(enabled: Boolean) {
-        val index = rulesets.indexOfFirst {
+        val ruRules = rulesets.filter {
             it.outboundTag == TAG_DIRECT &&
-                    (it.ip?.contains("geoip:ru") == true || it.domain?.contains("geosite:category-ru") == true || it.domain?.contains("domain:ru") == true || it.remarks == REMARKS_RU)
+                    (it.ip?.contains("geoip:ru") == true || it.domain?.contains("geosite:category-ru") == true || it.domain?.contains("domain:ru") == true || it.remarks?.contains("RU") == true || it.remarks == REMARKS_RU)
         }
-        if (index >= 0) {
-            val updated = rulesets[index].copy(
-                enabled = enabled,
-                ip = listOf("geoip:ru"),
-                domain = listOf("domain:ru", "geosite:category-ru")
-            )
-            update(index, updated)
+        if (ruRules.isNotEmpty()) {
+            ruRules.forEach { rule ->
+                val index = rulesets.indexOf(rule)
+                if (index >= 0) {
+                    rulesets[index] = rule.copy(enabled = enabled)
+                }
+            }
+            MmkvManager.encodeRoutingRulesets(rulesets)
+            _rulesetsFlow.value = rulesets.toList()
         } else {
-            val newRule = RulesetItem(
+            val domainRule = RulesetItem(
                 id = UUID.randomUUID().toString(),
-                remarks = REMARKS_RU,
+                remarks = "Исключить российские сайты (RU)",
                 outboundTag = TAG_DIRECT,
-                ip = listOf("geoip:ru"),
                 domain = listOf("domain:ru", "geosite:category-ru"),
                 enabled = enabled
             )
-            rulesets.add(0, newRule)
+            val ipRule = RulesetItem(
+                id = UUID.randomUUID().toString(),
+                remarks = "Исключить российские IP (RU)",
+                outboundTag = TAG_DIRECT,
+                ip = listOf("geoip:ru"),
+                enabled = enabled
+            )
+            rulesets.add(0, ipRule)
+            rulesets.add(0, domainRule)
             MmkvManager.encodeRoutingRulesets(rulesets)
             _rulesetsFlow.value = rulesets.toList()
         }

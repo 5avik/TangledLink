@@ -52,8 +52,25 @@ object SettingsManager {
     private fun initRoutingRulesets(context: Context) {
         val exist = MmkvManager.decodeRoutingRulesets()
         if (exist.isNullOrEmpty()) {
-            val rulesetList = getPresetRoutingRulesets(context)
+            val rulesetList = getPresetRoutingRulesets(context, RoutingType.WHITE_RUSSIA)
             MmkvManager.encodeRoutingRulesets(rulesetList)
+        } else {
+            val hasRu = exist.any {
+                it.outboundTag == TAG_DIRECT &&
+                        (it.ip?.contains("geoip:ru") == true || it.domain?.contains("geosite:category-ru") == true || it.domain?.contains("domain:ru") == true || it.remarks?.contains("RU") == true)
+            }
+            if (!hasRu && !MmkvManager.decodeSettingsBool("ru_routing_init_checked", false)) {
+                val ruPresets = getPresetRoutingRulesets(context, RoutingType.WHITE_RUSSIA)?.filter {
+                    it.outboundTag == TAG_DIRECT &&
+                            (it.ip?.contains("geoip:ru") == true || it.domain?.contains("geosite:category-ru") == true || it.domain?.contains("domain:ru") == true || it.remarks?.contains("RU") == true)
+                }
+                if (!ruPresets.isNullOrEmpty()) {
+                    val updated = exist.toMutableList()
+                    updated.addAll(ruPresets)
+                    MmkvManager.encodeRoutingRulesets(updated)
+                }
+                MmkvManager.encodeSettings("ru_routing_init_checked", true)
+            }
         }
     }
 
@@ -63,7 +80,7 @@ object SettingsManager {
      * @param type The routing preset type.
      * @return A mutable list of RulesetItem.
      */
-    private fun getPresetRoutingRulesets(context: Context, type: RoutingType = RoutingType.WHITE): MutableList<RulesetItem>? {
+    private fun getPresetRoutingRulesets(context: Context, type: RoutingType = RoutingType.WHITE_RUSSIA): MutableList<RulesetItem>? {
         val assets = Utils.readTextFromAssets(context, type.fileName)
         if (TextUtils.isEmpty(assets)) {
             return null
