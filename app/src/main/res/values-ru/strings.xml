@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">TangledVPN</string>
-    <string name="app_widget_name">TangledVPN</string>
-    <string name="app_tile_name">TangledVPN</string>
+    <string name="app_name" translatable="false">TangledLink</string>
+    <string name="app_widget_name">TangledLink</string>
+    <string name="app_tile_name">TangledLink</string>
     <string name="app_tile_first_use">Добавьте профиль в приложении перед использованием этой функции.</string>
     <string name="navigation_drawer_open">Открыть панель навигации</string>
     <string name="navigation_drawer_close">Закрыть панель навигации</string>
@@ -14,7 +14,7 @@
     <string name="pull_down_to_refresh">Потяните вниз для обновления!</string>
 
     <!-- Notifications -->
-    <string name="notification_channel_service">Служба TangledVPN</string>
+    <string name="notification_channel_service">Служба TangledLink</string>
     <string name="notification_channel_subscription_updates">Обновления подписок</string>
     <string name="notification_channel_connection_checks">Проверки соединения</string>
     <string name="notification_action_stop_v2ray">Остановить</string>
@@ -287,7 +287,7 @@
     <string name="summary_pref_tg_group">Присоединиться к группе в Telegram</string>
     <string name="toast_tg_app_not_found">Приложение Telegram не найдено</string>
     <string name="title_privacy_policy">Политика конфиденциальности</string>
-    <string name="privacy_policy_content">Политика конфиденциальности TangledVPN\n\nМы уважаем вашу конфиденциальность и стремимся защитить ваши личные данные.\n\n1. Сбор информации: Приложение TangledVPN не собирает, не хранит и не передает третьим лицам ваши личные данные, логи посещений, историю браузера или IP-адреса.\n\n2. Сетевой трафик: Весь сетевой трафик проходит исключительно через выбранные вами узлы и шифруется.\n\n3. Разрешения: Приложение запрашивает только необходимые разрешения для работы службы VPN в Android.\n\nИспользуя приложение, вы соглашаетесь с данной политикой конфиденциальности.</string>
+    <string name="privacy_policy_content">Политика конфиденциальности TangledLink\n\nМы уважаем вашу конфиденциальность и стремимся защитить ваши личные данные.\n\n1. Сбор информации: Приложение TangledLink не собирает, не хранит и не передает третьим лицам ваши личные данные, логи посещений, историю браузера или IP-адреса.\n\n2. Сетевой трафик: Весь сетевой трафик проходит исключительно через выбранные вами узлы и шифруется.\n\n3. Разрешения: Приложение запрашивает только необходимые разрешения для работы службы VPN в Android.\n\nИспользуя приложение, вы соглашаетесь с данной политикой конфиденциальности.</string>
     <string name="title_qr_code">QR-код</string>
     <string name="title_about">О приложении</string>
     <string name="title_source_code">Исходный код</string>
@@ -378,13 +378,23 @@
     <string name="tasker_setting_confirm">Подтвердить</string>
 
     <!-- RoutingSettingActivity -->
+    <string name="routing_settings_quick_title">Быстрая настройка</string>
+    <string name="routing_settings_bypass_lan">Исключить локальную сеть (LAN)</string>
+    <string name="routing_settings_bypass_lan_summary">Локальный трафик и адреса роутеров идут напрямую мимо VPN</string>
+    <string name="routing_settings_bypass_russia">Исключить российские сайты и IP-адреса</string>
+    <string name="routing_settings_bypass_russia_summary">Сайты .ru, гос. ресурсы и IP-адреса РФ идут напрямую мимо VPN</string>
+    <string name="routing_settings_custom_direct_title">Исключить из VPN (Напрямую / Direct)</string>
+    <string name="routing_settings_custom_direct_hint">Домены или IP-адреса для доступа без VPN (через запятую)</string>
+    <string name="routing_settings_custom_proxy_title">Пускать через VPN (Прокси / Proxy)</string>
+    <string name="routing_settings_custom_proxy_hint">Домены или IP-адреса, которые должны идти строго через VPN</string>
+    <string name="routing_settings_custom_rules_title">Продвинутые правила</string>
     <string name="routing_settings_domain_strategy">Доменная стратегия</string>
     <string name="routing_settings_title">Маршрутизация</string>
     <string name="routing_settings_tips">Правило применяется, только если одновременно выполняются все заданные условия сопоставления (логический оператор «И»). Правила проверяются сверху вниз; применяется первое совпавшее правило.</string>
     <string name="routing_settings_comma_tip">Разделяйте несколько значений запятыми (,).</string>
     <string name="routing_settings_save">Сохранить</string>
     <string name="routing_settings_delete">Очистить</string>
-    <string name="routing_settings_rule_title">Настройка правил маршрутизации</string>
+    <string name="routing_settings_rule_title">Настройка правила маршрутизации</string>
     <string name="routing_settings_add_rule">Добавить правило</string>
     <string name="routing_settings_import_predefined_rulesets">Импорт набора правил</string>
     <string name="routing_settings_import_rulesets_tip">Существующие правила будут удалены. Продолжить?</string>
@@ -392,16 +402,16 @@
     <string name="routing_settings_import_rulesets_from_qrcode">Импорт правил из QR-кода</string>
     <string name="routing_settings_export_rulesets_to_clipboard">Экспорт правил в буфер обмена</string>
     <string name="routing_settings_locked">Постоянное (сохранится при импорте правил)</string>
-    <string name="routing_settings_domain" translatable="false">domain</string>
-    <string name="routing_settings_ip" translatable="false">ip</string>
-    <string name="routing_settings_process">process (имя пакета — поддерживается только при использовании Xray TUN, включённой функции «Домен только для маршрутизации (routeOnly)» и Android 10+)</string>
-    <string name="routing_settings_process_select">Выбор названия пакета</string>
-    <string name="routing_settings_port" translatable="false">port</string>
-    <string name="routing_settings_protocol" translatable="false">protocol</string>
-    <string name="routing_settings_protocol_tip" translatable="false">[http,tls,bittorrent]</string>
-    <string name="routing_settings_network" translatable="false">network</string>
-    <string name="routing_settings_outbound_tag_hint">proxy / direct / block / &lt;%1$s&gt;</string>
-    <string name="routing_settings_outbound_tag" translatable="false">outboundTag</string>
+    <string name="routing_settings_domain">Домены и сайты</string>
+    <string name="routing_settings_ip">IP-адреса и подсети</string>
+    <string name="routing_settings_process">Приложения (имя пакета)</string>
+    <string name="routing_settings_process_select">Выбрать приложение из списка</string>
+    <string name="routing_settings_port">Порты</string>
+    <string name="routing_settings_protocol">Протоколы (http, tls, bittorrent)</string>
+    <string name="routing_settings_protocol_tip">[http,tls,bittorrent]</string>
+    <string name="routing_settings_network">Тип сети (tcp, udp)</string>
+    <string name="routing_settings_outbound_tag_hint">proxy / direct / block</string>
+    <string name="routing_settings_outbound_tag">Направление трафика</string>
 
     <string name="connection_test_pending">Проверить соединение</string>
     <string name="connection_test_testing">Проверка…</string>
@@ -570,7 +580,7 @@
     <string name="sub_info_open_page">Открыть страницу подписки</string>
     <string name="sub_info_unlimited">Без ограничений</string>
 
-    <!-- TangledVPN -->
+    <!-- TangledLink -->
     <string name="tngl_login_dialog_title">Авторизация</string>
     <string name="tngl_login_dialog_message">Введите ваш персональный токен доступа для подгрузки конфигурации.</string>
     <string name="tngl_login_hint">Введите ваш логин или токен доступа</string>
@@ -581,7 +591,7 @@
     <string name="tngl_btn_update_sub">Обновить подписку</string>
     <string name="tngl_btn_test_ping">Проверить связь</string>
     <string name="tngl_update_dialog_title">Доступно обновление: v%1$s</string>
-    <string name="tngl_update_dialog_message">Доступна новая версия TangledVPN. Желаете обновить приложение?</string>
+    <string name="tngl_update_dialog_message">Доступна новая версия TangledLink. Желаете обновить приложение?</string>
     <string name="tngl_update_btn_update">Обновить</string>
     <string name="tngl_update_btn_later">Позже</string>
 

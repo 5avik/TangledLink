@@ -56,7 +56,6 @@ fun AboutScreen(
 
     val libVersion = CoreNativeManager.getLibVersion()
     val versionText = "v${BuildConfig.VERSION_NAME} ($libVersion)"
-    val appIdText = BuildConfig.APPLICATION_ID
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -94,8 +93,7 @@ fun AboutScreen(
                 onClick = { showPrivacyDialog = true }
             )
             VersionInfoBlock(
-                versionText = versionText,
-                appIdText = appIdText
+                versionText = versionText
             )
             NavigationBarsSpacer()
         }

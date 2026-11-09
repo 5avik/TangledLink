@@ -588,7 +588,7 @@ class MainViewModel(
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (e: Exception) {
-                    LogUtil.e(AppConfig.TAG, "TangledVPN token submit failed", e)
+                    LogUtil.e(AppConfig.TAG, "TangledLink token submit failed", e)
                     toast(R.string.tngl_error_invalid_token)
                 }
             }
@@ -657,7 +657,7 @@ class MainViewModel(
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (e: Exception) {
-                    LogUtil.e(AppConfig.TAG, "TangledVPN subscription update failed", e)
+                    LogUtil.e(AppConfig.TAG, "TangledLink subscription update failed", e)
                     toast(R.string.tngl_error_invalid_token)
                 }
             }

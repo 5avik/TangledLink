@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
-    <string name="app_name" translatable="false">TangledVPN</string>
+    <string name="app_name" translatable="false">TangledLink</string>
     <string name="app_widget_name">Switch</string>
     <string name="app_tile_name">Switch</string>
     <string name="app_tile_first_use">Add a profile in the app before using this feature.</string>
@@ -14,7 +14,7 @@
     <string name="pull_down_to_refresh">Please pull down to refresh!</string>
 
     <!-- Notifications -->
-    <string name="notification_channel_service">TangledVPN service</string>
+    <string name="notification_channel_service">TangledLink service</string>
     <string name="notification_channel_subscription_updates">Subscription updates</string>
     <string name="notification_channel_connection_checks">Connection checks</string>
     <string name="notification_action_stop_v2ray">Stop</string>
@@ -287,7 +287,7 @@
     <string name="summary_pref_tg_group">Join the Telegram group</string>
     <string name="toast_tg_app_not_found">Telegram app not found</string>
     <string name="title_privacy_policy">Privacy policy</string>
-    <string name="privacy_policy_content">TangledVPN Privacy Policy\n\nWe respect your privacy and are committed to protecting your personal data.\n\n1. Data Collection: TangledVPN does not collect, store, or share your personal data, browsing history, logs, or IP addresses with third parties.\n\n2. Network Traffic: All network traffic passes exclusively through the nodes configured by you and is encrypted.\n\n3. Permissions: The app only requests permissions necessary for the Android VPN service to function.\n\nBy using this application, you agree to this Privacy Policy.</string>
+    <string name="privacy_policy_content">TangledLink Privacy Policy\n\nWe respect your privacy and are committed to protecting your personal data.\n\n1. Data Collection: TangledLink does not collect, store, or share your personal data, browsing history, logs, or IP addresses with third parties.\n\n2. Network Traffic: All network traffic passes exclusively through the nodes configured by you and is encrypted.\n\n3. Permissions: The app only requests permissions necessary for the Android VPN service to function.\n\nBy using this application, you agree to this Privacy Policy.</string>
     <string name="title_qr_code">QR code</string>
     <string name="title_about">About</string>
     <string name="title_source_code">Source code</string>
@@ -374,6 +374,16 @@
     <string name="tasker_setting_confirm">Confirm</string>
 
     <!-- RoutingSettingActivity -->
+    <string name="routing_settings_quick_title">Quick Routing</string>
+    <string name="routing_settings_bypass_lan">Bypass local network (LAN)</string>
+    <string name="routing_settings_bypass_lan_summary">Send local network traffic directly without VPN</string>
+    <string name="routing_settings_bypass_russia">Bypass Russian websites &amp; IPs</string>
+    <string name="routing_settings_bypass_russia_summary">Send Russian domains (.ru, gov) and IP addresses directly</string>
+    <string name="routing_settings_custom_direct_title">Bypass VPN (Direct / Direct connection)</string>
+    <string name="routing_settings_custom_direct_hint">Domains or IPs to access without VPN (e.g. yandex.ru, 192.168.1.1)</string>
+    <string name="routing_settings_custom_proxy_title">Route through VPN (Proxy / VPN only)</string>
+    <string name="routing_settings_custom_proxy_hint">Domains or IPs to always send through VPN (e.g. instagram.com, youtube.com)</string>
+    <string name="routing_settings_custom_rules_title">Advanced Rules</string>
     <string name="routing_settings_domain_strategy">Domain strategy</string>
     <string name="routing_settings_title">Routing Settings</string>
     <string name="routing_settings_tips">A rule applies only when every configured matching condition is satisfied (AND). Rules are checked from top to bottom; the first matching rule is applied.</string>
@@ -388,16 +398,16 @@
     <string name="routing_settings_import_rulesets_from_qrcode">Import ruleset from QR code</string>
     <string name="routing_settings_export_rulesets_to_clipboard">Export ruleset to clipboard</string>
     <string name="routing_settings_locked">Locked; keep this rule when importing presets</string>
-    <string name="routing_settings_domain" translatable="false">domain</string>
-    <string name="routing_settings_ip" translatable="false">ip</string>
-    <string name="routing_settings_process">process (Package Name — only supported when using Xray TUN, routeOnly enabled, and Android 10+)</string>
+    <string name="routing_settings_domain">Domains</string>
+    <string name="routing_settings_ip">IP addresses</string>
+    <string name="routing_settings_process">Process / App package name</string>
     <string name="routing_settings_process_select">Select package name</string>
-    <string name="routing_settings_port" translatable="false">port</string>
-    <string name="routing_settings_protocol" translatable="false">protocol</string>
-    <string name="routing_settings_protocol_tip" translatable="false">[http,tls,bittorrent]</string>
-    <string name="routing_settings_network" translatable="false">network</string>
+    <string name="routing_settings_port">Ports</string>
+    <string name="routing_settings_protocol">Protocols</string>
+    <string name="routing_settings_protocol_tip">[http,tls,bittorrent]</string>
+    <string name="routing_settings_network">Network</string>
     <string name="routing_settings_outbound_tag_hint">proxy / direct / block / &lt;%1$s&gt;</string>
-    <string name="routing_settings_outbound_tag" translatable="false">outboundTag</string>
+    <string name="routing_settings_outbound_tag">Outbound Action</string>
 
     <string name="connection_test_pending">Check connectivity</string>
     <string name="connection_test_testing">Testing…</string>
@@ -567,7 +577,7 @@
     <string name="sub_info_traffic" translatable="false">%1$s / %2$s</string>
     <string name="sub_info_unlimited">Unlimited</string>
 
-    <!-- TangledVPN -->
+    <!-- TangledLink -->
     <string name="tngl_login_dialog_title">Authorization</string>
     <string name="tngl_login_dialog_message">Enter your personal access token to load configuration.</string>
     <string name="tngl_login_hint">Enter your login or access token</string>
@@ -578,7 +588,7 @@
     <string name="tngl_btn_update_sub">Update subscription</string>
     <string name="tngl_btn_test_ping">Check connection</string>
     <string name="tngl_update_dialog_title">Update Available: v%1$s</string>
-    <string name="tngl_update_dialog_message">A new version of TangledVPN is available. Would you like to update now?</string>
+    <string name="tngl_update_dialog_message">A new version of TangledLink is available. Would you like to update now?</string>
     <string name="tngl_update_btn_update">Update</string>
     <string name="tngl_update_btn_later">Later</string>
 

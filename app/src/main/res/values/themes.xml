@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <color name="window_background_light">#FFFFFFFF</color>
     <color name="window_background_dark">#FF1C1B1F</color>
 
@@ -7,6 +7,8 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowBackground">@color/window_background_light</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="s">@color/window_background_dark</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="s">@mipmap/ic_launcher_foreground</item>
     </style>
 
     <!-- API 27+ adds navigation bar icon appearance in the versioned base theme. -->

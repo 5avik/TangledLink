@@ -53,11 +53,13 @@ import com.v2ray.ang.handler.SettingsManager
 import com.v2ray.ang.ui.base.HelperBaseComponentActivity
 import com.v2ray.ang.ui.compose.AppDropdownMenuItems
 import com.v2ray.ang.ui.compose.AppTopBar
+import com.v2ray.ang.ui.compose.FormTextField
 import com.v2ray.ang.ui.compose.ItemDivider
 import com.v2ray.ang.ui.compose.NavigationBarsBottomPadding
 import com.v2ray.ang.ui.compose.ReorderableListItem
 import com.v2ray.ang.ui.compose.SelectListDialog
 import com.v2ray.ang.ui.compose.SettingsListItem
+import com.v2ray.ang.ui.compose.SettingsSwitchItem
 import com.v2ray.ang.ui.compose.colorConfigType
 import com.v2ray.ang.ui.compose.verticalScrollbar
 import com.v2ray.ang.util.JsonUtil
@@ -78,11 +80,11 @@ private enum class RoutingMenuAction(@StringRes val labelRes: Int) {
 }
 
 private enum class RoutingPreset(val type: RoutingType, @StringRes val labelRes: Int) {
+    RussiaWhitelist(RoutingType.WHITE_RUSSIA, R.string.routing_preset_russia_whitelist),
+    Global(RoutingType.GLOBAL, R.string.routing_preset_global),
     ChinaWhitelist(RoutingType.WHITE, R.string.routing_preset_china_whitelist),
     ChinaBlacklist(RoutingType.BLACK, R.string.routing_preset_china_blacklist),
-    Global(RoutingType.GLOBAL, R.string.routing_preset_global),
-    IranWhitelist(RoutingType.WHITE_IRAN, R.string.routing_preset_iran_whitelist),
-    RussiaWhitelist(RoutingType.WHITE_RUSSIA, R.string.routing_preset_russia_whitelist)
+    IranWhitelist(RoutingType.WHITE_IRAN, R.string.routing_preset_iran_whitelist)
 }
 
 class RoutingSettingActivity : HelperBaseComponentActivity() {
@@ -202,6 +204,11 @@ fun RoutingSettingScreen(
     onExportClipboard: () -> Unit
 ) {
     val rulesets by viewModel.rulesetsFlow.collectAsStateWithLifecycle()
+    val bypassLan by viewModel.bypassLanFlow.collectAsStateWithLifecycle()
+    val bypassRussia by viewModel.bypassRussiaFlow.collectAsStateWithLifecycle()
+    val customDirectText by viewModel.customDirectFlow.collectAsStateWithLifecycle()
+    val customProxyText by viewModel.customProxyFlow.collectAsStateWithLifecycle()
+
     val domainStrategy by domainStrategyState.collectAsState()
     var showMenu by remember { mutableStateOf(false) }
     var showPresetDialog by remember { mutableStateOf(false) }
@@ -209,7 +216,6 @@ fun RoutingSettingScreen(
     val domainStrategies = stringArrayResource(R.array.routing_domain_strategy).toList()
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        // Lazy list indices include the preceding non-rule content, so resolve the stable rule keys.
         val fromIndex = rulesets.indexOfFirst { it.id == from.key }
         val toIndex = rulesets.indexOfFirst { it.id == to.key }
         viewModel.move(fromIndex, toIndex)
@@ -263,7 +269,48 @@ fun RoutingSettingScreen(
                 .verticalScrollbar(lazyListState),
             contentPadding = NavigationBarsBottomPadding()
         ) {
+            item(key = "quick_routing_header") {
+                Text(
+                    text = stringResource(R.string.routing_settings_quick_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 8.dp)
+                )
+            }
+            item(key = "bypass_lan") {
+                SettingsSwitchItem(
+                    title = stringResource(R.string.routing_settings_bypass_lan),
+                    summary = stringResource(R.string.routing_settings_bypass_lan_summary),
+                    checked = bypassLan,
+                    onCheckedChange = { viewModel.toggleBypassLan(it) }
+                )
+            }
+            item(key = "bypass_russia") {
+                SettingsSwitchItem(
+                    title = stringResource(R.string.routing_settings_bypass_russia),
+                    summary = stringResource(R.string.routing_settings_bypass_russia_summary),
+                    checked = bypassRussia,
+                    onCheckedChange = { viewModel.toggleBypassRussia(it) }
+                )
+            }
+            item(key = "custom_direct") {
+                FormTextField(
+                    label = stringResource(R.string.routing_settings_custom_direct_title),
+                    placeholder = stringResource(R.string.routing_settings_custom_direct_hint),
+                    value = customDirectText,
+                    onValueChange = { viewModel.saveCustomDirect(it) }
+                )
+            }
+            item(key = "custom_proxy") {
+                FormTextField(
+                    label = stringResource(R.string.routing_settings_custom_proxy_title),
+                    placeholder = stringResource(R.string.routing_settings_custom_proxy_hint),
+                    value = customProxyText,
+                    onValueChange = { viewModel.saveCustomProxy(it) }
+                )
+            }
             item(key = "domain_strategy") {
+                Spacer(modifier = Modifier.height(8.dp))
                 SettingsListItem(
                     title = stringResource(R.string.routing_settings_domain_strategy),
                     entries = domainStrategies,
@@ -272,11 +319,12 @@ fun RoutingSettingScreen(
                     onSelected = { onDomainStrategySelected(it) }
                 )
             }
-            item {
+            item(key = "custom_rules_header") {
                 Text(
-                    text = stringResource(R.string.routing_settings_rule_title),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(16.dp)
+                    text = stringResource(R.string.routing_settings_custom_rules_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 8.dp)
                 )
             }
 
@@ -303,7 +351,6 @@ fun RoutingSettingScreen(
             }
         }
     }
-
 
     if (showPresetDialog) {
         SelectListDialog(
@@ -334,7 +381,7 @@ private fun RoutingRulesetItem(
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = ruleset.remarks ?: "",
+                    text = ruleset.remarks.orEmpty(),
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -349,7 +396,7 @@ private fun RoutingRulesetItem(
                     )
                 }
             }
-            val domainIpInfo = (ruleset.domain ?: ruleset.ip ?: ruleset.process ?: ruleset.port)?.toString() ?: ""
+            val domainIpInfo = (ruleset.domain.orEmpty() + ruleset.ip.orEmpty() + ruleset.process.orEmpty()).joinToString(", ")
             if (domainIpInfo.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -360,10 +407,16 @@ private fun RoutingRulesetItem(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            if (!ruleset.outboundTag.isNullOrEmpty()) {
+            val tagLabel = when (ruleset.outboundTag) {
+                "direct" -> "Напрямую (Direct)"
+                "proxy" -> "Через VPN (Proxy)"
+                "block" -> "Заблокировать (Block)"
+                else -> ruleset.outboundTag
+            }
+            if (tagLabel.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = ruleset.outboundTag,
+                    text = tagLabel,
                     style = MaterialTheme.typography.labelMedium,
                     color = colorConfigType
                 )
@@ -382,7 +435,7 @@ private fun RoutingRulesetItem(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Switch(
-                checked = ruleset.enabled ?: false,
+                checked = ruleset.enabled,
                 onCheckedChange = onEnabledChange,
                 modifier = Modifier.scale(0.7f),
                 colors = SwitchDefaults.colors(

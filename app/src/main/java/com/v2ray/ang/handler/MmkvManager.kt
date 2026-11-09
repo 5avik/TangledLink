@@ -188,14 +188,14 @@ object MmkvManager {
     }
 
     /**
-     * Gets the TangledVPN user token.
+     * Gets the TangledLink user token.
      */
     fun getTnglUserToken(): String? {
         return mainStorage.decodeString(com.v2ray.ang.AppConfig.KEY_TNGL_USER_TOKEN)
     }
 
     /**
-     * Sets the TangledVPN user token.
+     * Sets the TangledLink user token.
      */
     fun setTnglUserToken(token: String?) {
         withProfileIndexLock {

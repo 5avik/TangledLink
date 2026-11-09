@@ -1227,6 +1227,16 @@ object CoreConfigManager {
 
         val outboundTag = rule.outboundTag
 
+        if (rule.domain.isNullOrEmpty() &&
+            rule.ip.isNullOrEmpty() &&
+            rule.process.isNullOrEmpty() &&
+            rule.port.isNullOrBlank() &&
+            rule.network.isNullOrBlank() &&
+            rule.protocol.isNullOrEmpty()
+        ) {
+            return
+        }
+
         // Route rules targeting a custom policy-group tag should hit its balancer.
         policyGroupBalancerTags[outboundTag]?.let { balancerTag ->
             rule.outboundTag = null
