@@ -15,9 +15,10 @@ https://docs.github.com/en/rest/releases/releases#get-the-latest-release
 4. Do not promote it to Latest or a full release.
 5. Attach the corresponding APK and identify the commit and signing certificate.
 
-The build workflow only uploads debug APKs as Actions artifacts. It does not create
-tags or publish releases automatically. A branch push therefore cannot replace the
-stable release.
+Branch pushes only build, test and upload debug APKs as Actions artifacts.
+The explicitly authorized tag v0.9-test additionally publishes a prerelease after
+both Android and backend jobs succeed, with --prerelease and --latest=false.
+The workflow does not create tags or publish full stable releases.
 
 ## Current limitations
 
