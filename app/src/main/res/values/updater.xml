@@ -1,0 +1,11 @@
+<resources>
+    <string name="updater_title">App update</string>
+    <string name="updater_downloading">Downloading update…</string>
+    <string name="updater_ready">Download complete</string>
+    <string name="updater_failed">Could not download or install the update. Check your connection and APK signature, then retry.</string>
+    <string name="updater_cancelled">Download cancelled</string>
+    <string name="updater_progress">%1$d%%</string>
+    <string name="updater_install">Install update</string>
+    <string name="updater_retry">Retry</string>
+    <string name="updater_permission_hint">Android may ask you to allow installation from TangledLink. Confirm installation in the system dialog.</string>
+</resources>

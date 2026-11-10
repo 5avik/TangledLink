@@ -151,7 +151,7 @@ fun MainScreen(
         TnglUpdateDialog(
             updateResult = uiState.updateResult!!,
             onConfirmUpdate = { url ->
-                onAction(MainAction.OpenSubscriptionLink(url))
+                onAction(MainAction.DownloadUpdate(url))
             },
             onDismiss = {
                 onAction(MainAction.DismissUpdateDialog)

@@ -114,6 +114,10 @@ class MainActivity : HelperBaseComponentActivity() {
                     MainAction.RestartService -> LauncherManager.restartServiceOrStart(this, ::requestServiceStart)
                     MainAction.LocateSelectedServer -> mainViewModel.triggerLocateSelectedServer()
                     is MainAction.SelectServer -> setSelectServer(action.guid)
+                    is MainAction.DownloadUpdate -> startActivity(
+                        Intent(this, com.v2ray.ang.ui.checkupdate.UpdateDownloadActivity::class.java)
+                            .putExtra("downloadUrl", action.url)
+                    )
                     is MainAction.OpenSubscriptionLink -> openSubscriptionLink(action.url)
                     else -> mainViewModel.onAction(action)
                 }

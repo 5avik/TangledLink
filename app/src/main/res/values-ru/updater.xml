@@ -1,0 +1,11 @@
+<resources>
+    <string name="updater_title">Обновление приложения</string>
+    <string name="updater_downloading">Загружаем обновление…</string>
+    <string name="updater_ready">Загрузка завершена</string>
+    <string name="updater_failed">Не удалось загрузить или установить обновление. Проверьте соединение и подпись APK, затем повторите попытку.</string>
+    <string name="updater_cancelled">Загрузка отменена</string>
+    <string name="updater_progress">%1$d%%</string>
+    <string name="updater_install">Установить обновление</string>
+    <string name="updater_retry">Повторить</string>
+    <string name="updater_permission_hint">Android может попросить разрешить установку из TangledLink. Подтвердите установку в системном окне.</string>
+</resources>
