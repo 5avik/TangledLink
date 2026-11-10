@@ -21,6 +21,22 @@ class UpdateDownloadActivityTest {
         }
     }
 
+    @Test fun completeReleaseDownload() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val url = InstrumentationRegistry.getArguments().getString("downloadUrl")
+            ?: "https://github.com/5avik/TangledLink/releases/download/v0.7/tngl_0.7_universal.apk"
+        val scenario = ActivityScenario.launch<UpdateDownloadActivity>(
+            Intent(context, UpdateDownloadActivity::class.java).putExtra("downloadUrl", url))
+        lateinit var model: UpdateDownloadViewModel
+        scenario.onActivity { model = androidx.lifecycle.ViewModelProvider(it)[UpdateDownloadViewModel::class.java] }
+        compose.waitUntil(180000) { model.state.value.ready || model.state.value.failed }
+        org.junit.Assert.assertTrue("APK download and signature validation must succeed", model.state.value.ready)
+        // Leave the system permission/installer screen visible for manual verification.
+        compose.waitForIdle()
+        Thread.sleep(20000)
+        scenario.close()
+    }
+
     @Test fun releaseDownloadStaysInsideApp() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         context.startActivity(Intent(context, UpdateDownloadActivity::class.java)

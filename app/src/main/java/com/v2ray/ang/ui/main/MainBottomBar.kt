@@ -37,7 +37,7 @@ fun MainBottomBar(
     onAction: (MainAction) -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    Surface(color = colors.background) {
+    Surface(color = colors.surface) {
         Surface(
             modifier = Modifier
                 .navigationBarsPadding()
