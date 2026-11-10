@@ -1,0 +1,25 @@
+[Unit]
+Description=TangledLink authentication API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=tngl-auth
+Group=tngl-auth
+WorkingDirectory=/opt/tngl-auth
+EnvironmentFile=/etc/tngl-auth.env
+ExecStart=/opt/node24/bin/node /opt/tngl-auth/server.mjs
+Restart=on-failure
+RestartSec=5
+StateDirectory=tngl-auth
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tngl-auth
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

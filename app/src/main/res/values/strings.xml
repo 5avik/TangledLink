@@ -579,7 +579,7 @@
 
     <!-- TangledLink -->
     <string name="tngl_login_dialog_title">Authorization</string>
-    <string name="tngl_login_dialog_message">Enter your personal access token to load configuration.</string>
+    <string name="tngl_login_dialog_message">Enter your subscription ID and app password.</string>
     <string name="tngl_login_hint">Enter your login or access token</string>
     <string name="tngl_login_button">Login</string>
     <string name="tngl_change_account">Change Account</string>
@@ -596,4 +596,25 @@
     <string name="routing_advanced_summary">Domain lists, domain strategy and individual rules</string>
     <string name="routing_advanced_expanded">Expanded</string>
     <string name="routing_advanced_collapsed">Collapsed</string>
+    <string name="auth_id">Subscription ID</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_activation_code">Activation code</string>
+    <string name="auth_activate">First activation</string>
+    <string name="auth_login_mode">Already activated? Sign in</string>
+    <string name="auth_activate_submit">Activate</string>
+    <string name="auth_change_password">Change password</string>
+    <string name="auth_current_password">Current password</string>
+    <string name="auth_new_password">New password (12–128 characters)</string>
+    <string name="auth_required">Complete all required fields</string>
+    <string name="auth_invalid_id">Invalid subscription ID format</string>
+    <string name="auth_invalid_credentials">Incorrect ID, password or activation code</string>
+    <string name="auth_session_expired">Session expired. Sign in again</string>
+    <string name="auth_subscription_inactive">Subscription is disabled, expired or out of traffic</string>
+    <string name="auth_password_policy">Use a password of 12–128 characters</string>
+    <string name="auth_rate_limited">Too many attempts. Try again in 15 minutes</string>
+    <string name="auth_server_error">Server unavailable or subscription could not be loaded. Try again</string>
+    <string name="auth_password_changed">Password changed. Other sessions have been signed out</string>
+    <string name="auth_cancel">Cancel</string>
+    <string name="auth_working">Please wait…</string>
+    <string name="auth_activation_help">Enter the one-time code provided with your subscription and set a password.</string>
 </resources>

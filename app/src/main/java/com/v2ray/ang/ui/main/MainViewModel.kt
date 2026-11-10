@@ -15,6 +15,9 @@ import com.v2ray.ang.dto.entities.ProfileItem
 import com.v2ray.ang.dto.entities.ServersCache
 import com.v2ray.ang.dto.entities.SubscriptionCache
 import com.v2ray.ang.dto.entities.SubscriptionItem
+import com.v2ray.ang.handler.TnglAuthClient
+import com.v2ray.ang.handler.TnglSessionStore
+import com.v2ray.ang.handler.TnglAuthException
 import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.extension.delay
 import com.v2ray.ang.extension.isComplexType
@@ -289,7 +292,10 @@ class MainViewModel(
             MainAction.UpdateSubscriptions -> updateTnglSubscription()
             is MainAction.UpdateGroupSubscription -> updateTnglSubscription()
             MainAction.ChangeAccount -> changeAccount()
-            is MainAction.SubmitTnglToken -> submitTnglToken(action.token)
+            is MainAction.SubmitTnglCredentials -> submitCredentials(action)
+            MainAction.ShowPasswordDialog -> _uiState.update { it.copy(showPasswordDialog = true, authError = null) }
+            MainAction.DismissPasswordDialog -> if (!uiState.value.authBusy) _uiState.update { it.copy(showPasswordDialog = false, authError = null) }
+            is MainAction.ChangePassword -> changePassword(action.current, action.newPassword)
             MainAction.ExportAll -> exportAllAsync()
             is MainAction.SelectGroup -> subscriptionIdChanged(action.groupId)
             is MainAction.SelectServer -> updateSelectedGuid(action.guid)
@@ -485,6 +491,16 @@ class MainViewModel(
                     MmkvManager.removeSubscription(AppConfig.DEFAULT_SUBSCRIPTION_ID)
                 }
 
+                // Retire the old ID-only subscription URL before background updates run.
+                MmkvManager.setTnglUserToken(null)
+                MmkvManager.decodeSubscription(AppConfig.TNGL_SUB_ID)?.let { item ->
+                    if (item.url != TnglAuthClient.SUBSCRIPTION_URL) {
+                        item.url = TnglAuthClient.SUBSCRIPTION_URL
+                        item.requestHeaders = null
+                        item.usageInfo = null
+                        MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, item)
+                    }
+                }
                 val groups = dataSource.getSubscriptions()
                     .filter { it.guid != AppConfig.DEFAULT_SUBSCRIPTION_ID || dataSource.getServerGuidList(it.guid).isNotEmpty() }
                     .map {
@@ -502,7 +518,7 @@ class MainViewModel(
                 groupServerFlows.keys.removeAll { it !in validIds }
                 groupLoadMutexes.keys.removeAll { it !in validIds }
 
-                val token = MmkvManager.getTnglUserToken()
+                val token = TnglSessionStore.token()
                 val tnglServers = dataSource.getServerGuidList(AppConfig.TNGL_SUB_ID)
                 val needLogin = token.isNullOrBlank() || tnglServers.isEmpty()
 
@@ -551,53 +567,69 @@ class MainViewModel(
         }.also { setupGroupJob = it }
     }
 
-    private fun submitTnglToken(token: String) {
-        val cleanToken = token.trim()
-        if (cleanToken.isEmpty()) {
-            toast(R.string.tngl_login_empty_error)
+    private fun authMessage(error: Exception): Int = when ((error as? TnglAuthException)?.errorCode) {
+        "invalid_credentials" -> R.string.auth_invalid_credentials
+        "session_expired" -> R.string.auth_session_expired
+        "subscription_inactive" -> R.string.auth_subscription_inactive
+        "password_policy" -> R.string.auth_password_policy
+        "rate_limited" -> R.string.auth_rate_limited
+        else -> R.string.auth_server_error
+    }
+
+    private fun submitCredentials(action: MainAction.SubmitTnglCredentials) {
+        if (uiState.value.authBusy) return
+        val validation = AuthValidation.credentials(action.id, action.password, action.activationCode)
+        if (validation != null) {
+            _uiState.update { it.copy(authError = validation) }
             return
         }
-        MmkvManager.setTnglUserToken(cleanToken)
-
-        val subItem = SubscriptionItem(
-            remarks = AppConfig.TNGL_SUB_REMARKS,
-            url = AppConfig.TNGL_SUB_BASE_URL + cleanToken,
-            enabled = true,
-            autoUpdate = true
-        )
-        MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
-
-        launchLoading {
-            withContext(ioDispatcher) {
-                try {
-                    val subCache = SubscriptionCache(AppConfig.TNGL_SUB_ID, subItem)
-                    val result = dataSource.updateConfigViaSub(subCache)
-                    if (result.configCount > 0) {
-                        val servers = dataSource.getServerGuidList(AppConfig.TNGL_SUB_ID)
-                        if (servers.isNotEmpty()) {
-                            val currentSelected = dataSource.getSelectServer()
-                            if (currentSelected.isNullOrBlank() || currentSelected !in servers) {
-                                dataSource.setSelectServer(servers[0])
-                            }
-                        }
-                        _uiState.update { it.copy(showTnglLoginDialog = false) }
-                        setupGroupTab(forceRefresh = true)
-                        refreshSelectedGuid()
-                    } else {
-                        toast(R.string.tngl_error_invalid_token)
-                    }
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (e: Exception) {
-                    LogUtil.e(AppConfig.TAG, "TangledLink token submit failed", e)
-                    toast(R.string.tngl_error_invalid_token)
+        _uiState.update { it.copy(authBusy = true, authError = null) }
+        viewModelScope.launch {
+            try {
+                withContext(ioDispatcher) {
+                    TnglAuthClient.login(action.id.trim(), action.password, action.activationCode?.trim())
+                    MmkvManager.setTnglUserToken(null)
+                    val subItem = SubscriptionItem(
+                        remarks = AppConfig.TNGL_SUB_REMARKS,
+                        url = TnglAuthClient.SUBSCRIPTION_URL, enabled = true, autoUpdate = true
+                    )
+                    MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
+                    val result = dataSource.updateConfigViaSub(SubscriptionCache(AppConfig.TNGL_SUB_ID, subItem))
+                    if (result.configCount <= 0) throw java.io.IOException("No configuration")
+                    val servers = dataSource.getServerGuidList(AppConfig.TNGL_SUB_ID)
+                    if (dataSource.getSelectServer() !in servers) servers.firstOrNull()?.let(dataSource::setSelectServer)
                 }
-            }
+                _uiState.update { it.copy(showTnglLoginDialog = false) }
+                setupGroupTab(forceRefresh = true)
+                refreshSelectedGuid()
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) { _uiState.update { it.copy(authError = authMessage(error)) } }
+            finally { _uiState.update { it.copy(authBusy = false) } }
+        }
+    }
+
+    private fun changePassword(current: String, newPassword: String) {
+        if (uiState.value.authBusy) return
+        val validation = AuthValidation.passwordChange(current, newPassword)
+        if (validation != null) {
+            _uiState.update { it.copy(authError = validation) }
+            return
+        }
+        _uiState.update { it.copy(authBusy = true, authError = null) }
+        viewModelScope.launch {
+            try {
+                withContext(ioDispatcher) { TnglAuthClient.changePassword(current, newPassword) }
+                _uiState.update { it.copy(showPasswordDialog = false) }
+                toast(R.string.auth_password_changed)
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) { _uiState.update { it.copy(authError = authMessage(error)) } }
+            finally { _uiState.update { it.copy(authBusy = false) } }
         }
     }
 
     private fun changeAccount() {
         viewModelScope.launch(ioDispatcher) {
+            TnglAuthClient.logout()
             MmkvManager.setTnglUserToken(null)
             MmkvManager.removeSubscription(AppConfig.TNGL_SUB_ID)
             MmkvManager.removeServerViaSubid(AppConfig.TNGL_SUB_ID)
@@ -608,7 +640,7 @@ class MainViewModel(
     }
 
     private fun updateTnglSubscription() {
-        val token = MmkvManager.getTnglUserToken()
+        val token = TnglSessionStore.token()
         if (token.isNullOrBlank()) {
             _uiState.update { it.copy(showTnglLoginDialog = true) }
             return
@@ -618,13 +650,13 @@ class MainViewModel(
         if (subItem == null) {
             subItem = SubscriptionItem(
                 remarks = AppConfig.TNGL_SUB_REMARKS,
-                url = AppConfig.TNGL_SUB_BASE_URL + token.trim(),
+                url = TnglAuthClient.SUBSCRIPTION_URL,
                 enabled = true,
                 autoUpdate = true
             )
             MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
         } else {
-            subItem.url = AppConfig.TNGL_SUB_BASE_URL + token.trim()
+            subItem.url = TnglAuthClient.SUBSCRIPTION_URL
             subItem.remarks = AppConfig.TNGL_SUB_REMARKS
             subItem.autoUpdate = true
             MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
@@ -659,7 +691,11 @@ class MainViewModel(
                     throw cancelled
                 } catch (e: Exception) {
                     LogUtil.e(AppConfig.TAG, "TangledLink subscription update failed", e)
-                    toast(R.string.tngl_error_invalid_token)
+                    toast(authMessage(e))
+                } finally {
+                    if (TnglSessionStore.token() == null) {
+                        _uiState.update { it.copy(showTnglLoginDialog = true, authError = R.string.auth_session_expired) }
+                    }
                 }
             }
         }

@@ -141,9 +141,19 @@ fun MainScreen(
 
     if (uiState.showTnglLoginDialog) {
         TnglLoginDialog(
-            onConfirm = { token ->
-                onAction(MainAction.SubmitTnglToken(token))
+            busy = uiState.authBusy,
+            error = uiState.authError,
+            onConfirm = { id, password, code ->
+                onAction(MainAction.SubmitTnglCredentials(id, password, code))
             }
+        )
+    }
+
+    if (uiState.showPasswordDialog) {
+        TnglPasswordDialog(
+            busy = uiState.authBusy, error = uiState.authError,
+            onDismiss = { onAction(MainAction.DismissPasswordDialog) },
+            onConfirm = { current, next -> onAction(MainAction.ChangePassword(current, next)) }
         )
     }
 
@@ -210,6 +220,7 @@ fun MainScreen(
                         when (action) {
                             MainMoreMenuAction.UpdateSubscriptions -> onAction(MainAction.UpdateSubscriptions)
                             MainMoreMenuAction.ChangeAccount -> onAction(MainAction.ChangeAccount)
+                            MainMoreMenuAction.ChangePassword -> onAction(MainAction.ShowPasswordDialog)
                             MainMoreMenuAction.RoutingSettings -> onNavigate(MainDestination.Routing)
                         }
                     }

@@ -28,6 +28,9 @@ data class MainUiState(
     val doubleColumnDisplay: Boolean = false,
     val shareQRCodeBitmap: android.graphics.Bitmap? = null,
     val showTnglLoginDialog: Boolean = false,
+    val showPasswordDialog: Boolean = false,
+    val authBusy: Boolean = false,
+    val authError: Int? = null,
     val showTnglUpdateDialog: Boolean = false,
     val updateResult: com.v2ray.ang.dto.CheckUpdateResult? = null
 )
@@ -75,6 +78,9 @@ sealed interface MainAction {
     data object LocateHandled : MainAction
 
     data object ChangeAccount : MainAction
-    data class SubmitTnglToken(val token: String) : MainAction
+    data class SubmitTnglCredentials(val id: String, val password: String, val activationCode: String?) : MainAction
+    data object ShowPasswordDialog : MainAction
+    data object DismissPasswordDialog : MainAction
+    data class ChangePassword(val current: String, val newPassword: String) : MainAction
     data object DismissUpdateDialog : MainAction
 }

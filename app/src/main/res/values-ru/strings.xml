@@ -582,7 +582,7 @@
 
     <!-- TangledLink -->
     <string name="tngl_login_dialog_title">Авторизация</string>
-    <string name="tngl_login_dialog_message">Введите ваш персональный токен доступа для подгрузки конфигурации.</string>
+    <string name="tngl_login_dialog_message">Введите ID подписки и пароль приложения.</string>
     <string name="tngl_login_hint">Введите ваш логин или токен доступа</string>
     <string name="tngl_login_button">Войти</string>
     <string name="tngl_change_account">Сменить аккаунт</string>
@@ -599,4 +599,25 @@
     <string name="routing_advanced_summary">Списки доменов, стратегия обработки доменов и отдельные правила</string>
     <string name="routing_advanced_expanded">Развёрнуто</string>
     <string name="routing_advanced_collapsed">Свёрнуто</string>
+    <string name="auth_id">ID подписки</string>
+    <string name="auth_password">Пароль</string>
+    <string name="auth_activation_code">Код активации</string>
+    <string name="auth_activate">Первая активация</string>
+    <string name="auth_login_mode">Уже активировали? Войти</string>
+    <string name="auth_activate_submit">Активировать</string>
+    <string name="auth_change_password">Сменить пароль</string>
+    <string name="auth_current_password">Текущий пароль</string>
+    <string name="auth_new_password">Новый пароль (12–128 символов)</string>
+    <string name="auth_required">Заполните все обязательные поля</string>
+    <string name="auth_invalid_id">Неверный формат ID подписки</string>
+    <string name="auth_invalid_credentials">Неверный ID, пароль или код активации</string>
+    <string name="auth_session_expired">Сессия истекла. Войдите снова</string>
+    <string name="auth_subscription_inactive">Подписка отключена, истекла или исчерпан трафик</string>
+    <string name="auth_password_policy">Пароль должен содержать от 12 до 128 символов</string>
+    <string name="auth_rate_limited">Слишком много попыток. Повторите через 15 минут</string>
+    <string name="auth_server_error">Сервер недоступен или не удалось загрузить подписку. Повторите попытку</string>
+    <string name="auth_password_changed">Пароль изменён. Другие сессии завершены</string>
+    <string name="auth_cancel">Отмена</string>
+    <string name="auth_working">Подождите…</string>
+    <string name="auth_activation_help">Введите одноразовый код, выданный с подпиской, и задайте пароль.</string>
 </resources>
