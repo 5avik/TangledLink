@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,7 +7,20 @@ plugins {
     id("com.jaredsburrows.license")
 }
 
+val releaseSigningProperties = Properties().apply {
+    val configFile = rootProject.file("signing.properties")
+    if (configFile.exists()) configFile.inputStream().use { load(it) }
+}
+
 android {
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file(releaseSigningProperties.getProperty("storeFile", ".signing/release.keystore"))
+            storePassword = releaseSigningProperties.getProperty("storePassword")
+            keyAlias = releaseSigningProperties.getProperty("keyAlias")
+            keyPassword = releaseSigningProperties.getProperty("keyPassword")
+        }
+    }
     namespace = "com.v2ray.ang"
     compileSdk = 37
 
@@ -39,7 +54,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
