@@ -595,4 +595,8 @@
     <string name="tngl_update_btn_update">Обновить</string>
     <string name="tngl_update_btn_later">Позже</string>
 
+    <string name="routing_advanced_title">Продвинутые настройки</string>
+    <string name="routing_advanced_summary">Списки доменов, стратегия обработки доменов и отдельные правила</string>
+    <string name="routing_advanced_expanded">Развёрнуто</string>
+    <string name="routing_advanced_collapsed">Свёрнуто</string>
 </resources>

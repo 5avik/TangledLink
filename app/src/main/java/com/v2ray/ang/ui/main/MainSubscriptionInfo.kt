@@ -1,21 +1,24 @@
 package com.v2ray.ang.ui.main
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -43,7 +46,6 @@ import com.v2ray.ang.util.Utils
 private const val MILLIS_PER_SECOND = 1000L
 private const val EXPIRY_DATE_PATTERN = "yyyy-MM-dd"
 private const val NO_EXPIRY_SYMBOL = "\u221E"
-private const val CARD_ALPHA = 0.97f
 
 /** Locale-neutral values the subscription information box renders. */
 internal data class SubscriptionInfoUiModel(
@@ -97,8 +99,7 @@ internal fun buildSubscriptionInfoUiModel(
 }
 
 /**
- * Fixed box on top of a subscription group showing the account information published by the
- * subscription panel: traffic, expiry date and shortcuts (support link, panel page, update).
+ * Account card showing subscription traffic, expiry and shortcuts to update or test servers.
  */
 @Composable
 internal fun SubscriptionInfoCard(
@@ -114,19 +115,23 @@ internal fun SubscriptionInfoCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = CARD_ALPHA),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
     ) {
-        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 12.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Text(
                     text = model.title ?: fallbackTitle,
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 model.supportUrl?.let { url ->
@@ -156,31 +161,31 @@ internal fun SubscriptionInfoCard(
             ) {
                 StatsRow(model)
                 model.trafficFraction?.let { fraction ->
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(8.dp))
                     LinearProgressIndicator(
                         progress = { fraction },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp))
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
                             .clearAndSetSemantics {},
                         color = if (model.trafficLow) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     )
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
-
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                maxItemsInEachRow = 2,
             ) {
                 OutlinedButton(
                     onClick = onRefresh,
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier = Modifier.weight(1f).widthIn(min = 136.dp).heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_refresh_24dp),
@@ -192,16 +197,16 @@ internal fun SubscriptionInfoCard(
                         text = stringResource(R.string.tngl_btn_update_sub),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
                 FilledTonalButton(
                     onClick = onTestPing,
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier = Modifier.weight(1f).widthIn(min = 136.dp).heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_check_update_24dp),
@@ -213,7 +218,7 @@ internal fun SubscriptionInfoCard(
                         text = stringResource(R.string.tngl_btn_test_ping),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -224,7 +229,13 @@ internal fun SubscriptionInfoCard(
 
 @Composable
 private fun CardIconButton(iconRes: Int, contentDescription: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(48.dp),
+        colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+    ) {
         Icon(painterResource(iconRes), contentDescription, Modifier.size(20.dp))
     }
 }
@@ -238,8 +249,12 @@ private fun StatsRow(model: SubscriptionInfoUiModel) {
     }
     // Figures and the slash between them always read left to right, also in right-to-left languages;
     // otherwise the bidi algorithm swaps "used / total" around the slash.
-    val figuresStyle = MaterialTheme.typography.bodySmall.copy(textDirection = TextDirection.Ltr)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    val figuresStyle = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr)
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(
             text = stringResource(R.string.sub_info_traffic, model.usedBytes.toTrafficString(), totalText),
             modifier = Modifier.weight(1f, fill = false),
@@ -249,12 +264,20 @@ private fun StatsRow(model: SubscriptionInfoUiModel) {
             overflow = TextOverflow.Ellipsis,
         )
         Spacer(Modifier.size(8.dp))
-        Text(
-            // No expiry date means the subscription never expires.
-            text = model.expireMillis?.let { Utils.formatTimestamp(it, EXPIRY_DATE_PATTERN) } ?: NO_EXPIRY_SYMBOL,
-            style = figuresStyle,
-            color = if (model.expired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-        )
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = if (model.expired) MaterialTheme.colorScheme.errorContainer
+                else MaterialTheme.colorScheme.surfaceContainerHighest,
+            contentColor = if (model.expired) MaterialTheme.colorScheme.onErrorContainer
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+        ) {
+            Text(
+                // No expiry date means the subscription never expires.
+                text = model.expireMillis?.let { Utils.formatTimestamp(it, EXPIRY_DATE_PATTERN) } ?: NO_EXPIRY_SYMBOL,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                style = figuresStyle,
+                maxLines = 1,
+            )
+        }
     }
 }

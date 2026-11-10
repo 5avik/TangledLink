@@ -592,4 +592,8 @@
     <string name="tngl_update_btn_update">Update</string>
     <string name="tngl_update_btn_later">Later</string>
 
+    <string name="routing_advanced_title">Advanced settings</string>
+    <string name="routing_advanced_summary">Domain lists, domain strategy and individual rules</string>
+    <string name="routing_advanced_expanded">Expanded</string>
+    <string name="routing_advanced_collapsed">Collapsed</string>
 </resources>

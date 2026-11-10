@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_tagline">Ваше подключение</string>
+    <string name="home_vpn_on">VPN подключён</string>
+    <string name="home_vpn_off">VPN отключён</string>
+    <string name="home_connect">Подключить</string>
+    <string name="home_disconnect">Отключить</string>
+    <string name="home_empty_title">Ваша сеть начинается здесь</string>
+    <string name="home_empty_summary">Войдите, чтобы загрузить серверы.</string>
+    <string name="home_clear_search">Очистить поиск</string>
+</resources>

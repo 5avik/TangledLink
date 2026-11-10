@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="main_servers_title">Серверы</string>
+    <string name="main_servers_count">Доступно: %1$d</string>
+    <string name="main_servers_empty">Серверы не найдены</string>
+    <string name="main_servers_empty_hint">Обновите подписку или измените поисковый запрос.</string>
+    <string name="main_server_actions">Действия с сервером %1$s</string>
+</resources>

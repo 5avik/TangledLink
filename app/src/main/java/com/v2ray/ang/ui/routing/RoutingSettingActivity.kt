@@ -4,6 +4,9 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.annotation.StringRes
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +21,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Card
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,10 +35,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringArrayResource
@@ -207,6 +216,7 @@ fun RoutingSettingScreen(
     val customProxyText by viewModel.customProxyFlow.collectAsStateWithLifecycle()
 
     val domainStrategy by domainStrategyState.collectAsState()
+    var advancedExpanded by rememberSaveable { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showPresetDialog by remember { mutableStateOf(false) }
 
@@ -225,12 +235,6 @@ fun RoutingSettingScreen(
                 title = stringResource(R.string.routing_settings_title),
                 onBackClick = onBackClick,
                 actions = {
-                    IconButton(onClick = onAddRule) {
-                        Icon(
-                            painterResource(R.drawable.ic_add_24dp),
-                            contentDescription = stringResource(R.string.acc_add_rule)
-                        )
-                    }
                     Box {
                         IconButton(onClick = { showMenu = true }) {
                             Icon(
@@ -263,6 +267,8 @@ fun RoutingSettingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .imePadding()
                 .verticalScrollbar(lazyListState),
             contentPadding = NavigationBarsBottomPadding()
         ) {
@@ -289,6 +295,44 @@ fun RoutingSettingScreen(
                     checked = bypassRussia,
                     onCheckedChange = { viewModel.toggleBypassRussia(it) }
                 )
+            }
+            item(key = "advanced_toggle") {
+                val expansionState = stringResource(
+                    if (advancedExpanded) R.string.routing_advanced_expanded else R.string.routing_advanced_collapsed
+                )
+                Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics(mergeDescendants = true) { stateDescription = expansionState }
+                            .clickable { advancedExpanded = !advancedExpanded }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.routing_advanced_title), style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                stringResource(R.string.routing_advanced_summary),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            painterResource(R.drawable.ic_expand_more_24dp),
+                            contentDescription = null,
+                            modifier = Modifier.rotate(if (advancedExpanded) 180f else 0f)
+                        )
+                    }
+                }
+            }
+            if (advancedExpanded) {
+            item(key = "add_rule") {
+                TextButton(onClick = onAddRule, modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Icon(painterResource(R.drawable.ic_add_24dp), contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.acc_add_rule))
+                }
             }
             item(key = "custom_direct") {
                 FormTextField(
@@ -345,6 +389,7 @@ fun RoutingSettingScreen(
                     }
                     ItemDivider()
                 }
+            }
             }
         }
     }

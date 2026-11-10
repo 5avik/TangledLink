@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_tagline">Your connection</string>
+    <string name="home_vpn_on">VPN connected</string>
+    <string name="home_vpn_off">VPN disconnected</string>
+    <string name="home_connect">Connect</string>
+    <string name="home_disconnect">Disconnect</string>
+    <string name="home_empty_title">Your network starts here</string>
+    <string name="home_empty_summary">Sign in to load your servers.</string>
+    <string name="home_clear_search">Clear search</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="main_servers_title">Servers</string>
+    <string name="main_servers_count">%1$d available</string>
+    <string name="main_servers_empty">No servers found</string>
+    <string name="main_servers_empty_hint">Update your subscription or try another search.</string>
+    <string name="main_server_actions">Actions for %1$s</string>
+</resources>
