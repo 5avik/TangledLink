@@ -51,8 +51,8 @@ fun MainScreen(
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    var showSearch by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
+    var showSearch by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     var showDelAllConfirm by remember { mutableStateOf(false) }
     var showDelDuplicateConfirm by remember { mutableStateOf(false) }
     var showDelInvalidConfirm by remember { mutableStateOf(false) }
@@ -73,6 +73,11 @@ fun MainScreen(
         initialPage = 0,
         pageCount = { groups.size.coerceAtLeast(1) }
     )
+
+    // Reapply restored input when the Activity is recreated with a new ViewModel.
+    LaunchedEffect(Unit) {
+        onAction(MainAction.Search(searchQuery))
+    }
 
     val lazyListStates = remember { mutableStateMapOf<String, LazyListState>() }
     val lazyGridStates = remember { mutableStateMapOf<String, LazyGridState>() }

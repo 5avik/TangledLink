@@ -13,8 +13,8 @@ android {
         applicationId = "pro.tngl"
         minSdk = 24
         targetSdk = 37
-        versionCode = 4
-        versionName = "0.4"
+        versionCode = 5
+        versionName = "0.5"
 
         val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(';')
         splits {
@@ -34,10 +34,8 @@ android {
                 isUniversalApk = abiFilterList.isNullOrEmpty()
             }
         }
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -48,7 +46,6 @@ android {
             )
         }
     }
-
     flavorDimensions.add("distribution")
     productFlavors {
         create("fdroid") {
@@ -60,25 +57,21 @@ android {
             buildConfigField("String", "DISTRIBUTION", "\"Play Store\"")
         }
     }
-
     sourceSets {
         getByName("main") {
             jniLibs.srcDirs("libs")
         }
     }
-
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
-
     applicationVariants.all {
         val variant = this
         val versionCodes =
@@ -97,12 +90,10 @@ android {
                 }
             }
     }
-
     buildFeatures {
         buildConfig = true
         compose = true
     }
-
     androidResources {
         generateLocaleConfig = true
         localeFilters += listOf(
@@ -118,13 +109,11 @@ android {
             "bqi-rIR"
         )
     }
-
     packaging {
         jniLibs {
             useLegacyPackaging = true
         }
     }
-
     testOptions {
         unitTests.all {
             it.useJUnitPlatform()
@@ -135,7 +124,6 @@ android {
             it.systemProperty("junit.platform.discovery.issue.severity.critical", "WARNING")
         }
     }
-
 }
 
 dependencies {
@@ -193,7 +181,19 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 }
+
+// Connected tests may uninstall the target app. Never select personal devices implicitly.
+tasks.matching { it.name.startsWith("connected") && it.name.endsWith("AndroidTest") }
+    .configureEach {
+        doFirst {
+            check(System.getenv("ANDROID_SERIAL")?.startsWith("emulator-") == true) {
+                "Run connected UI tests only on a disposable emulator: set ANDROID_SERIAL=emulator-5554. Target app data may be deleted."
+            }
+        }
+    }

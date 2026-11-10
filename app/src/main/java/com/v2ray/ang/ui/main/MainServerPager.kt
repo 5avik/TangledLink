@@ -60,9 +60,6 @@ import com.v2ray.ang.dto.entities.SubscriptionUsageInfo
 import com.v2ray.ang.ui.compose.ItemDivider
 import com.v2ray.ang.ui.compose.ReorderableGridItem
 import com.v2ray.ang.ui.compose.ReorderableListItem
-import com.v2ray.ang.ui.compose.colorConfigType
-import com.v2ray.ang.ui.compose.colorPing
-import com.v2ray.ang.ui.compose.colorPingRed
 import com.v2ray.ang.ui.compose.verticalScrollbar
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
@@ -417,7 +414,7 @@ private fun ServerListItem(
                     row.typeDescription,
                     modifier = Modifier.weight(1f, fill = false),
                     style = MaterialTheme.typography.bodySmall,
-                    color = colorConfigType,
+                    color = MaterialTheme.colorScheme.secondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -425,7 +422,8 @@ private fun ServerListItem(
                 Text(
                     testResult,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (row.testDelayMillis < 0L) colorPingRed else colorPing,
+                    color = if (row.testDelayMillis < 0L) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

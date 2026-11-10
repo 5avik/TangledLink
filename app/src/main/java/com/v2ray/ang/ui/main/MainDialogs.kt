@@ -91,14 +91,13 @@ fun TnglLoginDialog(
     val focusRequester = remember { FocusRequester() }
     val emptyErrorMsg = stringResource(R.string.tngl_login_empty_error)
 
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
     AlertDialog(
         onDismissRequest = { /* Prevent dismiss when token is missing */ },
         title = { Text(text = stringResource(R.string.tngl_login_dialog_title)) },
         text = {
+            LaunchedEffect(Unit) {
+                focusRequester.requestFocus()
+            }
             Column {
                 Text(
                     text = stringResource(R.string.tngl_login_dialog_message),
