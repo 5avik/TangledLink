@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.io.RandomAccessFile
 import java.net.URI
 import java.security.MessageDigest
 
@@ -17,7 +18,7 @@ val releaseSigningProperties = Properties().apply {
 // Pin both the release and its digest; never consume an unverified "latest" core.
 val nativeCoreVersion = "v26.11.9"
 val nativeCoreSha256 = "cdfef146218233a31a8b52c8b1016557730d3b63fc121d4c84cacea50e669155"
-val nativeCoreFile = layout.buildDirectory.file("native-core/$nativeCoreVersion/libv2ray.aar")
+val nativeCoreFile = rootProject.layout.projectDirectory.file(".gradle/native-core/$nativeCoreVersion/libv2ray.aar")
 fun coreSha256(file: File): String {
     val digest = MessageDigest.getInstance("SHA-256")
     file.inputStream().buffered().use { input ->
@@ -30,45 +31,48 @@ fun coreSha256(file: File): String {
     }
     return digest.digest().joinToString("") { "%02x".format(it) }
 }
-val provisionNativeCore = tasks.register("provisionNativeCore") {
-    group = "build setup"
-    description = "Fetches and verifies the pinned AndroidLibXrayLite AAR."
-    inputs.property("version", nativeCoreVersion)
-    inputs.property("sha256", nativeCoreSha256)
-    outputs.file(nativeCoreFile)
-    outputs.upToDateWhen {
-        nativeCoreFile.get().asFile.let { it.isFile && coreSha256(it) == nativeCoreSha256 }
-    }
-    doLast {
-        val destination = nativeCoreFile.get().asFile
-        destination.parentFile.mkdirs()
-        val staging = File(destination.parentFile, "libv2ray.aar.part")
-        try {
-            val local = file("libs/libv2ray.aar")
-            if (local.isFile && coreSha256(local) == nativeCoreSha256) {
-                local.copyTo(staging, overwrite = true)
-            } else {
-                check(!gradle.startParameter.isOffline) {
-                    "Pinned core is unavailable offline. Build once online or provide verified app/libs/libv2ray.aar."
+// IDE sync resolves local AARs without running producer tasks. Prepare it during
+// configuration, in a cache outside build/ so clean cannot remove it.
+run {
+    val destination = nativeCoreFile.asFile
+    destination.parentFile.mkdirs()
+    RandomAccessFile(File(destination.parentFile, ".lock"), "rw").use { lockFile ->
+        lockFile.channel.lock().use {
+            if (destination.isFile && coreSha256(destination) == nativeCoreSha256) return@run
+            val staging = File(destination.parentFile, "libv2ray.aar.part")
+            try {
+                val local = file("libs/libv2ray.aar")
+                if (local.isFile && coreSha256(local) == nativeCoreSha256) {
+                    local.copyTo(staging, overwrite = true)
+                } else {
+                    check(!gradle.startParameter.isOffline) {
+                        "Pinned core is unavailable offline. Build once online or provide verified app/libs/libv2ray.aar."
+                    }
+                    val connection = URI(
+                        "https://github.com/2dust/AndroidLibXrayLite/releases/download/$nativeCoreVersion/libv2ray.aar"
+                    ).toURL().openConnection().apply {
+                        connectTimeout = 15000
+                        readTimeout = 60000
+                    }
+                    connection.getInputStream().use { input ->
+                        staging.outputStream().use { output -> input.copyTo(output) }
+                    }
                 }
-                val connection = URI(
-                    "https://github.com/2dust/AndroidLibXrayLite/releases/download/$nativeCoreVersion/libv2ray.aar"
-                ).toURL().openConnection().apply {
-                    connectTimeout = 15000
-                    readTimeout = 60000
+                check(coreSha256(staging) == nativeCoreSha256) {
+                    "libv2ray.aar checksum mismatch. Refusing to use the downloaded core."
                 }
-                connection.getInputStream().use { input ->
-                    staging.outputStream().use { output -> input.copyTo(output) }
-                }
+                staging.copyTo(destination, overwrite = true)
+            } finally {
+                staging.delete()
             }
-            check(coreSha256(staging) == nativeCoreSha256) {
-                "libv2ray.aar checksum mismatch. Refusing to use the downloaded core."
-            }
-            staging.copyTo(destination, overwrite = true)
-        } finally {
-            staging.delete()
         }
     }
+}
+
+// Keep the explicit setup command available for scripts and CI.
+tasks.register("provisionNativeCore") {
+    group = "build setup"
+    description = "Ensures the pinned AndroidLibXrayLite AAR is available (prepared during configuration)."
 }
 
 android {
@@ -202,7 +206,7 @@ android {
 
 dependencies {
     // Core Libraries
-    implementation(files(nativeCoreFile).builtBy(provisionNativeCore))
+    implementation(files(nativeCoreFile))
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))).matching {
         exclude("libv2ray.aar")
     })
