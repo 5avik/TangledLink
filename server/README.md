@@ -32,7 +32,7 @@ HTTPS certificates are verified; loopback HTTP is allowed if configured explicit
 
 ```bash
 cd /opt/tngl-auth
-/opt/node24/bin/node --test auth.test.mjs upstream.test.mjs
+/opt/node24/bin/node --test auth.test.mjs upstream.test.mjs admin-panel.test.mjs
 install -m 644 tngl-auth.service /etc/systemd/system/tngl-auth.service
 systemctl daemon-reload
 systemctl enable --now tngl-auth
@@ -45,6 +45,60 @@ Port 8080 binds only to loopback; do not expose it. Nginx must overwrite X-Real-
 with $remote_addr as in the configuration already installed.
 Logs: journalctl -u tngl-auth -n 50 --no-pager.
 No request bodies, passwords, session tokens or subscription URLs are logged by the API.
+
+## Administration panel
+
+The panel is a separate process bound to 127.0.0.1:8081. It requires HTTP Basic
+authentication and a request token for every change. Use an SSH tunnel or the
+HTTPS Nginx configuration below. Do not expose the backend port 8081 directly.
+
+Set a unique random ADMIN_PASSWORD of at least 24 characters in /etc/tngl-auth.env
+and optionally set ADMIN_PORT (default 8081). Keep the environment file readable
+only by root and the tngl-auth group. Restart the service after changing it.
+
+```bash
+install -m 644 /opt/tngl-auth/tngl-admin.service /etc/systemd/system/tngl-admin.service
+systemctl daemon-reload
+systemctl enable --now tngl-admin
+systemctl status tngl-admin
+```
+
+On the administrator's computer, connect to the server with local port forwarding:
+
+```bash
+ssh -N -L 127.0.0.1:8081:127.0.0.1:8081 USER@SERVER
+```
+
+Open http://127.0.0.1:8081/ in a browser and enter any username and the
+ADMIN_PASSWORD. Use a private browser window so closing it clears the Basic
+authentication credential. The panel lists account IDs, activation state,
+invitation expiry and live session count. It can create or rotate a code for an
+unactivated subscription, reset an activated account's password, and revoke all
+sessions without changing the password. A reset clears the password and all
+sessions. Each invitation checks the upstream subscription first. Codes are shown
+only in the response that creates them; the database stores their hashes.
+
+Verify the owner's identity before resetting a password. Account IDs alone are
+insufficient proof. The panel manages app accounts for subscriptions that already
+exist in 3x-ui; it does not create 3x-ui subscriptions. The old public ID-only
+subscription route remains a separate access boundary as described below.
+
+### Optional public HTTPS access
+
+For the existing auth.tngl.pro certificate, nginx-admin.conf proxies HTTPS port
+9443 to loopback 8081 and limits requests per client IP. Review certificate paths
+and server_name if deploying on a different host. Install the file from an http
+context (Ubuntu's conf.d directory), test, then reload:
+
+```bash
+install -m 644 /opt/tngl-auth/nginx-admin.conf /etc/nginx/conf.d/tngl-admin.conf
+nginx -t && systemctl reload nginx
+```
+
+Allow inbound TCP 9443 in the server and hosting firewalls, then open
+https://auth.tngl.pro:9443/. An unauthenticated request returns 401.
+Do not replace HTTPS with plain HTTP for Basic authentication. A nonstandard port
+does not provide authentication. Keep ADMIN_PASSWORD random and private.
 
 ## First activation
 
@@ -111,13 +165,13 @@ On first launch of the new app, the old token is cleared and the saved TNGL
 subscription URL is migrated to the authenticated API. Old clients are unchanged.
 
 Back up the SQLite database with SQLite backup facilities or stop the service before
-copying the DB and its WAL. Store backups securely. No panel password/API key is required.
+copying the DB and its WAL. Store backups securely. No 3x-ui administrator password or API key is required.
 
 ## Verification
 
 Automated backend tests cover activation, invitation replay/rotation, concurrent
 activation, login failure, password change, session revocation, recovery, and upstream
-expiry/quota/header/body checks. Run /opt/node24/bin/node --test auth.test.mjs upstream.test.mjs.
+expiry/quota/header/body checks. Run /opt/node24/bin/node --test auth.test.mjs upstream.test.mjs admin-panel.test.mjs.
 Android validation and Compose form tests are in app/src/test and app/src/androidTest.
 Gradle automatically provisions the pinned libv2ray AAR with SHA-256 verification; see app/libs/README.md.
 

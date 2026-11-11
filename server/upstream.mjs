@@ -34,8 +34,15 @@ export async function subscription(base, id) {
   } finally { await reader.cancel(); }
   const body = Buffer.concat(chunks).toString('utf8').trim();
   const decoded = body.includes('://') ? body : Buffer.from(body, 'base64').toString('utf8');
-  const links = decoded.split(/\r?\n/).filter(line => line.trim());
-  if (!links.length || !links.every(line => /^(vless|vmess|trojan|ss|hysteria2|hy2|tuic|socks|wireguard):\/\//.test(line.trim())))
+  // Some subscription providers append vpn:// entries unsupported by this app.
+  // Drop those entries, but still require real supported configurations and reject
+  // every other unexpected format. Never forward unsupported entries to the app.
+  const lines = decoded.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const links = lines.filter(line => !line.startsWith('vpn://'));
+  if (!links.length || !links.every(line => /^(vless|vmess|trojan|ss|hysteria2|hy2|tuic|socks|wireguard):\/\//.test(line)))
     throw new ApiError(403, 'subscription_inactive');
-  return { body, info };
+  const filtered = links.join('\n');
+  const normalizedBody = lines.length === links.length ? body
+    : body.includes('://') ? filtered : Buffer.from(filtered).toString('base64');
+  return { body: normalizedBody, info };
 }

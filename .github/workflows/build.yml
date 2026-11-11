@@ -3,7 +3,7 @@ name: Build and test
 on:
   push:
     branches: [main, test]
-    tags: [v0.9-test]
+    tags: [v0.9.1-test]
   pull_request:
   workflow_dispatch:
 
@@ -55,7 +55,7 @@ jobs:
       - run: npm test
 
   prerelease:
-    if: github.ref == 'refs/tags/v0.9-test'
+    if: github.ref == 'refs/tags/v0.9.1-test'
     needs: [android, backend]
     runs-on: ubuntu-24.04
     permissions:
@@ -66,7 +66,7 @@ jobs:
         with:
           name: tngl-debug-${{ github.ref_name }}-${{ github.sha }}
           path: release-assets
-      - name: Publish 0.9-test prerelease
+      - name: Publish 0.9.1-test prerelease
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -74,7 +74,7 @@ jobs:
         run: |
           gh release create "$RELEASE_TAG" release-assets/*.apk \
             --verify-tag \
-            --title "TangledLink 0.9-test" \
-            --notes-file RELEASE_NOTES_0.9-test.md \
+            --title "TangledLink 0.9.1-test" \
+            --notes-file RELEASE_NOTES_0.9.1-test.md \
             --prerelease \
             --latest=false

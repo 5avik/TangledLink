@@ -24,7 +24,10 @@ class UpdateDownloadActivityTest {
     @Test fun completeReleaseDownload() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val url = InstrumentationRegistry.getArguments().getString("downloadUrl")
-            ?: "https://github.com/5avik/TangledLink/releases/download/v0.7/tngl_0.7_universal.apk"
+        org.junit.Assume.assumeTrue(
+            "Provide downloadUrl for a same-signed APK with versionCode >= the installed app",
+            !url.isNullOrBlank()
+        )
         val scenario = ActivityScenario.launch<UpdateDownloadActivity>(
             Intent(context, UpdateDownloadActivity::class.java).putExtra("downloadUrl", url))
         lateinit var model: UpdateDownloadViewModel

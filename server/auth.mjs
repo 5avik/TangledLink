@@ -117,7 +117,22 @@ export function createAuth(path) {
       db.prepare('DELETE FROM sessions WHERE account=? AND hash<>?').run(row.id, current.hash);
     });
   }
-  return { invite, activate, login, session, changePassword,
+  function listAccounts() {
+    return db.prepare(`SELECT a.id, a.hash IS NOT NULL AS activated,
+      CASE WHEN a.hash IS NULL AND a.invite_expires > ? THEN a.invite_expires ELSE NULL END AS inviteExpires,
+      COUNT(s.hash) AS activeSessions
+      FROM accounts a LEFT JOIN sessions s ON s.account = a.id AND s.expires > ?
+      GROUP BY a.id ORDER BY a.id COLLATE NOCASE`).all(now(), now()).map(row => ({
+        id: row.id, activated: Boolean(row.activated),
+        inviteExpires: row.inviteExpires, activeSessions: row.activeSessions
+      }));
+  }
+  function revokeSessions(id) {
+    if (!validId(id)) throw new ApiError(400, 'invalid_id');
+    if (!account(id)) throw new ApiError(404, 'not_found');
+    return db.prepare('DELETE FROM sessions WHERE account=?').run(id).changes;
+  }
+  return { invite, activate, login, session, changePassword, listAccounts, revokeSessions,
     logout(token) { db.prepare('DELETE FROM sessions WHERE hash=?').run(digest(token)); },
     close() { db.close(); } };
 }

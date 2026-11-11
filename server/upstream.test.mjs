@@ -21,6 +21,15 @@ test('subscription validates expiry, quota, response format and status headers',
     info = null;
     await assert.rejects(subscription(base, 'mika'), { code: 'subscription_status_missing' });
     info = 'upload=0; download=0; total=0; expire=0';
+    const config = 'vless://example@host:443?security=tls#test';
+    for (const encode of [text => text, text => Buffer.from(text).toString('base64')]) {
+      body = encode(config + '\n' + 'vpn://provider-entry');
+      assert.equal((await subscription(base, 'mika')).body, encode(config));
+      body = encode('vpn://provider-entry');
+      await assert.rejects(subscription(base, 'mika'), { code: 'subscription_inactive' });
+      body = encode(config + '\n' + 'unexpected://entry');
+      await assert.rejects(subscription(base, 'mika'), { code: 'subscription_inactive' });
+    }
     body = '<html>login</html>';
     await assert.rejects(subscription(base, 'mika'), { code: 'subscription_inactive' });
   } finally { await new Promise(resolve => server.close(resolve)); }
