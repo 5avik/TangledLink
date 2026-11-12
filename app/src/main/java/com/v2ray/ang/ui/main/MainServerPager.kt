@@ -122,6 +122,7 @@ fun GroupPagerPage(
             SubscriptionInfoCard(
                 info = usageInfo,
                 fallbackTitle = groupTitle.ifEmpty { stringResource(R.string.app_name) },
+                titleOverride = groupTitle.takeIf { groupId == com.v2ray.ang.AppConfig.TNGL_SUB_ID },
                 onOpenLink = onOpenLink,
                 onRefresh = { mainViewModel.onAction(MainAction.UpdateGroupSubscription(groupId)) },
                 onTestPing = { mainViewModel.onAction(MainAction.TestRealAllServers) }
@@ -396,27 +397,6 @@ private fun ServerListItem(
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(row.remarks, Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyLarge.copy(lineBreak = androidx.compose.ui.text.style.LineBreak.Paragraph), maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (row.subscriptionBadge.isNotBlank()) {
-                    Box(
-                        Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)), Alignment.Center
-                    ) {
-                        Text(row.subscriptionBadge.uppercase(), fontSize = androidx.compose.ui.unit.TextUnit.Unspecified, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                Text(
-                    row.statistics,
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
             Spacer(modifier = Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

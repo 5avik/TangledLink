@@ -1,5 +1,10 @@
 package com.v2ray.ang.ui.main
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import com.v2ray.ang.ui.compose.BrandButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -15,7 +20,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -237,6 +241,7 @@ fun MainScreen(
             },
             floatingActionButton = {},
         ) { innerPadding ->
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
             if (groups.isNotEmpty()) {
                 Column(
                     modifier = Modifier
@@ -311,18 +316,18 @@ fun MainScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
                 ) {
-                    Icon(
-                        painterResource(R.drawable.ic_privacy_24dp),
+                    Image(
+                        painterResource(R.mipmap.ic_launcher_foreground),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(56.dp)
+                        modifier = Modifier.size(176.dp)
                     )
                     Text(stringResource(R.string.home_empty_title), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
                     Text(stringResource(R.string.home_empty_summary), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-                    Button(onClick = { onAction(MainAction.UpdateSubscriptions) }) {
+                    BrandButton(onClick = { onAction(MainAction.UpdateSubscriptions) }) {
                         Text(stringResource(R.string.tngl_login_button))
                     }
                 }
+            }
             }
         }
     }

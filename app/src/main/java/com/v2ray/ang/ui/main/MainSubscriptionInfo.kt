@@ -109,6 +109,7 @@ internal fun SubscriptionInfoCard(
     onRefresh: () -> Unit,
     onTestPing: () -> Unit,
     modifier: Modifier = Modifier,
+    titleOverride: String? = null,
 ) {
     val model = remember(info) { buildSubscriptionInfoUiModel(info, System.currentTimeMillis()) }
 
@@ -127,9 +128,9 @@ internal fun SubscriptionInfoCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    text = model.title ?: fallbackTitle,
+                    text = titleOverride ?: model.title ?: fallbackTitle,
                     modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,

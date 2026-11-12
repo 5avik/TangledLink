@@ -590,7 +590,7 @@ class MainViewModel(
                     TnglAuthClient.login(action.id.trim(), action.password, action.activationCode?.trim())
                     MmkvManager.setTnglUserToken(null)
                     val subItem = SubscriptionItem(
-                        remarks = AppConfig.TNGL_SUB_REMARKS,
+                        remarks = action.id.trim(),
                         url = TnglAuthClient.SUBSCRIPTION_URL, enabled = true, autoUpdate = true
                     )
                     MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
@@ -657,7 +657,6 @@ class MainViewModel(
             MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
         } else {
             subItem.url = TnglAuthClient.SUBSCRIPTION_URL
-            subItem.remarks = AppConfig.TNGL_SUB_REMARKS
             subItem.autoUpdate = true
             MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
         }

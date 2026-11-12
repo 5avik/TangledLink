@@ -48,7 +48,7 @@ private val LightColor = lightColorScheme(
     onBackground = Color(0xFF121413),
     surface = Color(0xFFFFFFFF),
     onSurface = Color(0xFF121413),
-    surfaceVariant = Color(0xFFE2E8E4),
+    surfaceVariant = Color(0xFFEFF6F1),
     onSurfaceVariant = Color(0xFF404A44),
     outline = Color(0xFF707A74),
     outlineVariant = Color(0xFFC0CAC4),
@@ -65,40 +65,40 @@ private val LightColor = lightColorScheme(
 )
 
 private val DarkColor = darkColorScheme(
-    primary = Color(0xFF79DAB0),
-    onPrimary = Color(0xFF101012), // Dark Obsidian
-    primaryContainer = Color(0xFF183B25), // Deep Dark Green
-    onPrimaryContainer = Color(0xFF94FFB4), // Soft Mint Green
-    secondary = Color(0xFFA0CEDD),
-    onSecondary = Color(0xFF00363D),
-    secondaryContainer = Color(0xFF004D56),
-    onSecondaryContainer = Color(0xFFB8F8FF),
-    tertiary = Color(0xFFB4C5F0),
-    onTertiary = Color(0xFF101012),
-    tertiaryContainer = Color(0xFF183B25),
-    onTertiaryContainer = Color(0xFF94FFB4),
+    primary = Color(0xFF7CFC8A),
+    onPrimary = Color(0xFF04140C), // Dark Obsidian
+    primaryContainer = Color(0xFF122A1C), // Deep Dark Green
+    onPrimaryContainer = Color(0xFFC9F7D0), // Soft Mint Green
+    secondary = Color(0xFF48F0A9),
+    onSecondary = Color(0xFF04140C),
+    secondaryContainer = Color(0xFF103428),
+    onSecondaryContainer = Color(0xFFB7F6DC),
+    tertiary = Color(0xFF21D4A4),
+    onTertiary = Color(0xFF04140C),
+    tertiaryContainer = Color(0xFF122A1C),
+    onTertiaryContainer = Color(0xFFC9F7D0),
     error = Color(0xFFFF5252),
     errorContainer = Color(0xFF5C000B),
     onError = Color(0xFFFFFFFF),
     onErrorContainer = Color(0xFFFFDAD6),
-    background = Color(0xFF121212), // Dark Obsidian
-    onBackground = Color(0xFFE2E8E4),
-    surface = Color(0xFF1A1A1E), // Dark Card Surface
-    onSurface = Color(0xFFE2E8E4),
-    surfaceVariant = Color(0xFF24242A),
-    onSurfaceVariant = Color(0xFFA0B4A8),
-    outline = Color(0xFF2E3832),
-    outlineVariant = Color(0xFF1E2822),
-    inverseSurface = Color(0xFFE2E8E4),
-    inverseOnSurface = Color(0xFF121212),
+    background = Color(0xFF050806), // Dark Obsidian
+    onBackground = Color(0xFFEFF6F1),
+    surface = Color(0xFF0B1210), // Dark Card Surface
+    onSurface = Color(0xFFEFF6F1),
+    surfaceVariant = Color(0xFF0F1915),
+    onSurfaceVariant = Color(0xFF95A89E),
+    outline = Color(0xFF304238),
+    outlineVariant = Color(0xFF203128),
+    inverseSurface = Color(0xFFEFF6F1),
+    inverseOnSurface = Color(0xFF050806),
     inversePrimary = Color(0xFF00CC52),
     scrim = Color(0xFF000000),
-    surfaceTint = Color(0xFF79DAB0),
-    surfaceContainerLowest = Color(0xFF0D0D0F),
-    surfaceContainerLow = Color(0xFF16161A),
-    surfaceContainer = Color(0xFF1A1A1E),
-    surfaceContainerHigh = Color(0xFF222228),
-    surfaceContainerHighest = Color(0xFF2B2B32),
+    surfaceTint = Color(0xFF7CFC8A),
+    surfaceContainerLowest = Color(0xFF050806),
+    surfaceContainerLow = Color(0xFF070C09),
+    surfaceContainer = Color(0xFF0B1210),
+    surfaceContainerHigh = Color(0xFF122019),
+    surfaceContainerHighest = Color(0xFF1B2C23),
 )
 
 // Semantic Colors
@@ -109,7 +109,7 @@ val colorFabActive = Color(0xFF00FF66) // Neon Green Active
 val colorFabInactiveLight = Color(0xFF9C9C9C)
 val colorFabInactiveDark = Color(0xFF646464)
 val dividerColorLight = Color(0xFFE0E0E0)
-val dividerColorDark = Color(0xFF2E3832)
+val dividerColorDark = Color(0xFF304238)
 
 // Toast Colors
 val toastNormalBgLight = Color(0xD9353A3E)
@@ -195,7 +195,9 @@ fun AppTheme(
         LocalAppSnackbar provides snackbarController
     ) {
         MaterialTheme(
-            colorScheme = colorScheme
+            colorScheme = colorScheme,
+            typography = BrandTypography,
+            shapes = BrandShapes
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 AppSnackbarBridge(controller = snackbarController)
