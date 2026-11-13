@@ -2,6 +2,8 @@ import { createServer } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { createAuth, ApiError, validId } from './auth.mjs';
 import { subscription } from './upstream.mjs';
+import { panel, billing } from './billing-runtime.mjs';
+import { billingPage } from './billing-page.mjs';
 
 process.umask(0o077);
 const password = process.env.ADMIN_PASSWORD;
@@ -56,7 +58,7 @@ th{color:#a9bacb;font-weight:550}td.actions{display:flex;gap:7px;flex-wrap:wrap}
 #code{font-family:ui-monospace,monospace;font-size:1.1rem;color:#b7f8e4}
 @media(max-width:700px){table,thead,tbody,tr,td{display:block}thead{display:none}tr{padding:10px 0;border-bottom:1px solid #344657}td{border:0;padding:4px 0}td::before{content:attr(data-label) ': ';color:#a9bacb}}
 </style></head><body><main>
-<h1>TangledLink · Администрирование</h1>
+<h1>TangledLink · Администрирование</h1><p><a href="/billing" style="color:#7fd4bd">Оплаты и продления →</a></p>
 <p>Управление аккаунтами приложения. Подписка должна существовать в 3x-ui. Код показывается один раз.</p>
 <section class="card"><h2>Выдать код активации</h2><form id="inviteForm" class="row">
 <label>ID подписки<input id="newId" autocomplete="off" required maxlength="128" pattern="[A-Za-z0-9_-]+"></label>
@@ -138,7 +140,7 @@ document.getElementById('inviteForm').addEventListener('submit', event => {
 document.getElementById('refresh').addEventListener('click', refresh);
 refresh();
 </script></body></html>`;
-export function createAdminServer({ authStore = auth, verify = id => subscription(base, id) } = {}) {
+export function createAdminServer({ authStore = auth, verify = id => panel ? panel.getClient(id) : subscription(base, id), billingStore = billing } = {}) {
   return createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -152,16 +154,35 @@ export function createAdminServer({ authStore = auth, verify = id => subscriptio
       res.writeHead(401, {'WWW-Authenticate':'Basic realm="TangledLink admin", charset="UTF-8"'}); res.end(); return;
     }
     try {
-      if (req.method === 'GET' && req.url === '/') {
+      if (req.method === 'GET' && ['/', '/billing'].includes(req.url)) {
+        if (req.url === '/billing' && !billingStore) throw new ApiError(503, 'billing_unavailable');
         const nonce = randomBytes(16).toString('base64');
         res.setHeader('Content-Security-Policy', `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'self'`);
-        res.writeHead(200, {'Content-Type':'text/html; charset=utf-8'}); res.end(html(nonce)); return;
+        res.writeHead(200, {'Content-Type':'text/html; charset=utf-8'}); res.end(req.url === '/billing' ? billingPage(nonce, csrf) : html(nonce)); return;
+      }
+      if (req.method === 'GET' && req.url === '/api/billing/orders') {
+        if (!billingStore) throw new ApiError(503, 'billing_unavailable');
+        return reply(200, { orders: billingStore.list(), plan: billingStore.plan });
       }
       if (req.method === 'GET' && req.url === '/api/accounts') return reply(200, {accounts:authStore.listAccounts()});
-      if (req.method !== 'POST' || !['/api/invite','/api/reset','/api/revoke'].includes(req.url))
+      if (req.method !== 'POST' || !['/api/invite','/api/reset','/api/revoke','/api/billing/create','/api/billing/preview','/api/billing/confirm','/api/billing/reset'].includes(req.url))
         throw new ApiError(404, 'not_found');
       if (!equal(req.headers['x-csrf-token'] ?? '', csrf)) throw new ApiError(403, 'forbidden');
-      const { id } = await body(req);
+      const data = await body(req);
+      if (req.url.startsWith('/api/billing/')) {
+        if (!billingStore) throw new ApiError(503, 'billing_unavailable');
+        if (req.url === '/api/billing/create') {
+          if (!authStore.listAccounts().some(a => a.id === data.id && a.activated))
+            throw new ApiError(404, 'account_not_found');
+          return reply(200, { order: await billingStore.create(data.id) });
+        }
+        if (typeof data.orderId !== 'string' || !/^TL-[A-F0-9]{24}$/.test(data.orderId))
+          throw new ApiError(400, 'invalid_order_id');
+        if (req.url === '/api/billing/preview') return reply(200, await billingStore.preview(data.orderId));
+        if (req.url === '/api/billing/reset') return reply(200, { order: await billingStore.reset(data.orderId) });
+        return reply(200, { order: await billingStore.confirm(data.orderId) });
+      }
+      const { id } = data;
       if (!validId(id)) throw new ApiError(400, 'invalid_id');
       if (req.url === '/api/revoke') return reply(200, {revoked:authStore.revokeSessions(id)});
       const existing = authStore.listAccounts().find(item => item.id === id);
@@ -183,6 +204,6 @@ if (process.argv[1] && import.meta.url === new URL('file://' + process.argv[1]).
   server.headersTimeout = 10000;
   server.listen(port, '127.0.0.1', () => console.log('tngl-admin listening on loopback'));
   for (const signal of ['SIGINT','SIGTERM']) process.on(signal, () => server.close(() => {
-    auth.close(); process.exit(0);
+    auth.close(); billing?.close(); process.exit(0);
   }));
 }

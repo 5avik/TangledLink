@@ -91,6 +91,10 @@ class MainViewModel(
         )
     )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    private val billing = BillingController(viewModelScope, ioDispatcher,
+        com.v2ray.ang.handler.TnglBillingClient, onPaid = { updateTnglSubscription() })
+    val billingState = billing.uiState
+    fun billingPaymentUrl(): String? = billing.paymentUrl()
 
     // ---------- Keyword filtering ----------
     @Volatile
@@ -312,6 +316,11 @@ class MainViewModel(
                 _uiState.update { it.copy(shareQRCodeBitmap = null) }
             }
 
+            MainAction.ShowBilling -> billing.open()
+            MainAction.DismissBilling -> billing.close()
+            MainAction.CreateBillingOrder -> billing.create()
+            MainAction.RefreshBilling -> billing.refresh()
+
             MainAction.DismissUpdateDialog -> {
                 _uiState.update { it.copy(showTnglUpdateDialog = false) }
             }
@@ -328,6 +337,7 @@ class MainViewModel(
             is MainAction.ShareClipboard,
             is MainAction.ShareFullContent,
             is MainAction.DownloadUpdate,
+            MainAction.OpenBillingPayment,
             is MainAction.OpenSubscriptionLink -> {
                 // Handled by Activity via its onAction lambda
             }
@@ -519,8 +529,7 @@ class MainViewModel(
                 groupLoadMutexes.keys.removeAll { it !in validIds }
 
                 val token = TnglSessionStore.token()
-                val tnglServers = dataSource.getServerGuidList(AppConfig.TNGL_SUB_ID)
-                val needLogin = token.isNullOrBlank() || tnglServers.isEmpty()
+                val needLogin = token.isNullOrBlank()
 
                 _uiState.update {
                     it.copy(
@@ -594,8 +603,12 @@ class MainViewModel(
                         url = TnglAuthClient.SUBSCRIPTION_URL, enabled = true, autoUpdate = true
                     )
                     MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
-                    val result = dataSource.updateConfigViaSub(SubscriptionCache(AppConfig.TNGL_SUB_ID, subItem))
-                    if (result.configCount <= 0) throw java.io.IOException("No configuration")
+                    // Authentication remains valid for an expired subscription: the owner
+                    // must be able to reach renewal even when configs cannot be loaded.
+                    try {
+                        dataSource.updateConfigViaSub(SubscriptionCache(AppConfig.TNGL_SUB_ID, subItem))
+                    } catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: java.io.IOException) { /* Config access is separate from account access. */ }
                     val servers = dataSource.getServerGuidList(AppConfig.TNGL_SUB_ID)
                     if (dataSource.getSelectServer() !in servers) servers.firstOrNull()?.let(dataSource::setSelectServer)
                 }

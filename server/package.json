@@ -7,6 +7,6 @@
   },
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test auth.test.mjs upstream.test.mjs admin-panel.test.mjs"
+    "test": "node --test auth.test.mjs upstream.test.mjs admin-panel.test.mjs billing.test.mjs billing-reset.test.mjs xui-renewal.test.mjs"
   }
 }

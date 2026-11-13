@@ -118,6 +118,9 @@ class MainActivity : HelperBaseComponentActivity() {
                         Intent(this, com.v2ray.ang.ui.checkupdate.UpdateDownloadActivity::class.java)
                             .putExtra("downloadUrl", action.url)
                     )
+                    MainAction.OpenBillingPayment -> mainViewModel.billingPaymentUrl()?.let {
+                        Utils.openUri(this, it)
+                    }
                     is MainAction.OpenSubscriptionLink -> openSubscriptionLink(action.url)
                     else -> mainViewModel.onAction(action)
                 }

@@ -32,7 +32,7 @@ HTTPS certificates are verified; loopback HTTP is allowed if configured explicit
 
 ```bash
 cd /opt/tngl-auth
-/opt/node24/bin/node --test auth.test.mjs upstream.test.mjs admin-panel.test.mjs
+/opt/node24/bin/node --test auth.test.mjs upstream.test.mjs admin-panel.test.mjs billing.test.mjs billing-reset.test.mjs xui-renewal.test.mjs
 install -m 644 tngl-auth.service /etc/systemd/system/tngl-auth.service
 systemctl daemon-reload
 systemctl enable --now tngl-auth
@@ -128,6 +128,14 @@ runuser -u tngl-auth -- /opt/node24/bin/node --env-file=/etc/tngl-auth.env admin
 This clears the app password, revokes every session and issues a fresh activation code.
 It does not change credentials in 3x-ui. Never reset based only on knowledge of a Sub ID.
 
+## Subscription renewal
+
+Optional manual payment confirmation and renewal for 3x-ui v3.11.0 are implemented.
+See [BILLING.md](BILLING.md) for setup, exact email/account binding, the 150 RUB / 30 day plan,
+payment verification, retry behavior and limits. After creating an order, the app opens
+https://choco.tips/qr/50156198 using the Pay button and asks the user to enter their login in Name.
+Payment confirmation is manual; opening or returning from the site does not renew the subscription.
+
 ## API
 
 POST /v1/activate: {id, code, password}
@@ -150,9 +158,11 @@ rate limits before opening this prototype to a large audience.
 
 ## Access boundary and migration
 
-This backend checks available subscription configs and traffic/expiry headers rather
-than using the administrative 3x-ui API. It cannot revoke an already downloaded VPN
-configuration. That requires disabling/rotating the corresponding client in 3x-ui.
+Without XUI configuration this backend checks available subscription configs and traffic/expiry headers.
+With XUI configured it looks up the client by exact account/email, resolves the actual subId,
+and allows authenticated account access for renewal even after VPN expiry. Configuration access
+still requires an active upstream subscription. Session revocation alone does not revoke downloaded
+VPN configurations; disabling/rotating clients is a separate operation.
 
 The old public /tnglsubs/ID endpoint still grants access by ID until protected on the
 server. This prototype therefore adds app authentication but is NOT an exclusive
@@ -165,13 +175,14 @@ On first launch of the new app, the old token is cleared and the saved TNGL
 subscription URL is migrated to the authenticated API. Old clients are unchanged.
 
 Back up the SQLite database with SQLite backup facilities or stop the service before
-copying the DB and its WAL. Store backups securely. No 3x-ui administrator password or API key is required.
+copying the DB and its WAL. Store backups securely. The optional renewal integration also uses a
+separate billing.sqlite database and a server-only 3x-ui API token; see BILLING.md.
 
 ## Verification
 
 Automated backend tests cover activation, invitation replay/rotation, concurrent
 activation, login failure, password change, session revocation, recovery, and upstream
-expiry/quota/header/body checks. Run /opt/node24/bin/node --test auth.test.mjs upstream.test.mjs admin-panel.test.mjs.
+expiry/quota/header/body checks. Run /opt/node24/bin/node --test auth.test.mjs upstream.test.mjs admin-panel.test.mjs billing.test.mjs billing-reset.test.mjs xui-renewal.test.mjs.
 Android validation and Compose form tests are in app/src/test and app/src/androidTest.
 Gradle automatically provisions the pinned libv2ray AAR with SHA-256 verification; see app/libs/README.md.
 

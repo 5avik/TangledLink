@@ -77,6 +77,11 @@ sealed interface MainAction {
 
     data object LocateHandled : MainAction
 
+    data object ShowBilling : MainAction
+    data object DismissBilling : MainAction
+    data object CreateBillingOrder : MainAction
+    data object RefreshBilling : MainAction
+    data object OpenBillingPayment : MainAction
     data object ChangeAccount : MainAction
     data class SubmitTnglCredentials(val id: String, val password: String, val activationCode: String?) : MainAction
     data object ShowPasswordDialog : MainAction

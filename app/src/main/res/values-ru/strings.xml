@@ -620,4 +620,24 @@
     <string name="auth_cancel">Отмена</string>
     <string name="auth_working">Подождите…</string>
     <string name="auth_activation_help">Введите одноразовый код, выданный с подпиской, и задайте пароль.</string>
+    <string name="hub_account">Аккаунт</string>
+    <string name="hub_app">Приложение и подключение</string>
+    <string name="hub_tools">Инструменты и поддержка</string>
+    <string name="renew_subscription">Продлить подписку</string>
+    <string name="payment_soon_title">Оплата скоро появится</string>
+    <string name="payment_soon_message">Продление подписки и онлайн-оплата ещё в разработке. Возможность оплаты появится позже.</string>
+    <string name="payment_soon_close">Понятно</string>
+    <string name="billing_plan">%1$d ₽ · %2$d дней</string>
+    <string name="billing_order">Заказ: %1$s\nАккаунт: %2$s</string>
+    <string name="billing_create">Создать заказ на продление</string>
+    <string name="billing_check">Проверить статус</string>
+    <string name="billing_pending">Ожидается проверка оплаты администратором.</string>
+    <string name="billing_processing">Платёж обрабатывается. Перед повторной оплатой свяжитесь с администратором.</string>
+    <string name="billing_paid">Оплата подтверждена. Подписка продлена.</string>
+    <string name="billing_syncing">Продление принято. Серверы синхронизируются; если доступ не восстановился, обратитесь к администратору.</string>
+    <string name="billing_pay">Оплатить</string>
+    <string name="billing_payment_instructions">На странице оплаты в поле «Имя» укажите свой логин «%1$s» и оплатите 150 ₽. Затем вернитесь в приложение и дождитесь подтверждения администратора. Если вы уже оплатили, не оплачивайте повторно.</string>
+    <string name="billing_manual_note">Переход на страницу оплаты не подтверждает платёж. Администратор проверит поступление и продлит подписку. После оплаты нажмите «Проверить статус».</string>
+    <string name="billing_unavailable">Продление ещё не настроено. Обратитесь к администратору.</string>
+    <string name="billing_manual_review">Перед продлением этой подписки нужна проверка администратором.</string>
 </resources>

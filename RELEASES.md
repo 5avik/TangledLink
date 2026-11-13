@@ -16,7 +16,7 @@ https://docs.github.com/en/rest/releases/releases#get-the-latest-release
 5. Attach the corresponding APK and identify the commit and signing certificate.
 
 Branch pushes only build, test and upload debug APKs as Actions artifacts.
-The explicitly authorized tag v0.9.2-test additionally publishes a prerelease after
+The explicitly authorized tag v0.9.3-test additionally publishes a prerelease after
 both Android and backend jobs succeed, with --prerelease and --latest=false.
 The workflow does not create tags or publish full stable releases.
 

@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { createAuth, ApiError } from './auth.mjs';
 import { subscription } from './upstream.mjs';
+import { panel, billing } from './billing-runtime.mjs';
 
 process.umask(0o077);
 const base = process.env.SUBSCRIPTION_BASE;
@@ -33,7 +34,9 @@ async function json(req) {
     return value;
   } catch { throw new ApiError(400, 'invalid_json'); }
 }
-const server = createServer(async (req, res) => {
+export function createApiServer({ authStore = auth, billingStore = billing, panelClient = panel, subscriptionReader = subscription } = {}) {
+const auth = authStore;
+return createServer(async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   const reply = (status, body) => {
@@ -46,9 +49,24 @@ const server = createServer(async (req, res) => {
     limit('all:' + ip, 300);
     if (req.method === 'GET' && path === '/health') return reply(200, { status: 'ok' });
     const token = (req.headers.authorization ?? '').replace(/^Bearer /, '');
+    if (req.method === 'GET' && path === '/v1/billing') {
+      const session = auth.session(token);
+      if (!billingStore) throw new ApiError(503, 'billing_unavailable');
+      return reply(200, { plan: billingStore.plan, instructions: billingStore.instructions,
+        order: billingStore.latest(session.account) });
+    }
+    if (req.method === 'POST' && path === '/v1/billing/orders') {
+      const session = auth.session(token);
+      if (!billingStore) throw new ApiError(503, 'billing_unavailable');
+      limit('orders:' + session.account, 10);
+      const data = await json(req);
+      if (data.planId !== billingStore.plan.id) throw new ApiError(400, 'invalid_plan');
+      return reply(200, { order: await billingStore.create(session.account) });
+    }
     if (req.method === 'GET' && path === '/v1/subscription') {
       const session = auth.session(token);
-      const sub = await subscription(base, session.account);
+      const subId = panelClient ? (await panelClient.getClient(session.account)).client.subId : session.account;
+      const sub = await subscriptionReader(base, subId);
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'subscription-userinfo': sub.info });
       return res.end(sub.body);
     }
@@ -67,7 +85,7 @@ const server = createServer(async (req, res) => {
         return reply(200, { ok: true });
       }
       // Verify subscription before committing activation or issuing a session.
-      const verify = () => subscription(base, data.id);
+      const verify = () => panelClient ? panelClient.getClient(data.id) : subscriptionReader(base, data.id);
       const session = path === '/v1/login'
         ? await auth.login(data.id, data.password, verify)
         : await auth.activate(data.id, data.code, data.password, verify);
@@ -81,10 +99,14 @@ const server = createServer(async (req, res) => {
     } else res.destroy();
   }
 });
+}
+if (process.argv[1] && import.meta.url === new URL('file://' + process.argv[1]).href) {
+const server = createApiServer();
 server.requestTimeout = 15000;
 server.headersTimeout = 10000;
 server.maxConnections = 100;
 server.listen(Number(process.env.PORT ?? 8080), process.env.HOST ?? '127.0.0.1', () => console.log('tngl-auth listening'));
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
-  server.close(() => { auth.close(); process.exit(0); });
+  server.close(() => { auth.close(); billing?.close(); process.exit(0); });
 });
+}

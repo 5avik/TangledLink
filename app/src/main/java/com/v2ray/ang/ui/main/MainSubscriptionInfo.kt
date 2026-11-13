@@ -26,6 +26,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.v2ray.ang.ui.compose.BrandButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -110,6 +111,7 @@ internal fun SubscriptionInfoCard(
     onTestPing: () -> Unit,
     modifier: Modifier = Modifier,
     titleOverride: String? = null,
+    onRenew: () -> Unit = {},
 ) {
     val model = remember(info) { buildSubscriptionInfoUiModel(info, System.currentTimeMillis()) }
 
@@ -174,6 +176,10 @@ internal fun SubscriptionInfoCard(
                         trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     )
                 }
+            }
+
+            BrandButton(onClick = onRenew, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.renew_subscription))
             }
 
             FlowRow(

@@ -81,7 +81,9 @@ fun GroupPagerPage(
     usageInfo: SubscriptionUsageInfo?,
     groupTitle: String,
     onOpenLink: (String) -> Unit,
-    contentPadding: PaddingValues
+    contentPadding: PaddingValues,
+    onOpenSettings: () -> Unit,
+    onRenew: () -> Unit,
 ) {
     val groupStateFlow = remember(groupId) {
         mainViewModel.serverGroupState(groupId)
@@ -118,12 +120,14 @@ fun GroupPagerPage(
             mainViewModel.moveServer(groupId, fromIndex, toIndex)
         },
         contentPadding = contentPadding,
+        onOpenSettings = onOpenSettings,
         header = {
             SubscriptionInfoCard(
                 info = usageInfo,
                 fallbackTitle = groupTitle.ifEmpty { stringResource(R.string.app_name) },
                 titleOverride = groupTitle.takeIf { groupId == com.v2ray.ang.AppConfig.TNGL_SUB_ID },
                 onOpenLink = onOpenLink,
+                onRenew = onRenew,
                 onRefresh = { mainViewModel.onAction(MainAction.UpdateGroupSubscription(groupId)) },
                 onTestPing = { mainViewModel.onAction(MainAction.TestRealAllServers) }
             )
@@ -165,6 +169,7 @@ private fun ServerListPage(
     onLocateHandled: () -> Unit,
     onMoveServer: (Int, Int) -> Unit,
     contentPadding: PaddingValues,
+    onOpenSettings: () -> Unit,
     header: @Composable () -> Unit
 ) {
     if (doubleColumnDisplay) {
@@ -218,6 +223,9 @@ private fun ServerListPage(
                     content()
                 }
             }
+            item(key = "server-page-settings", span = { GridItemSpan(maxLineSpan) }) {
+                MainSettingsButton(onOpenSettings)
+            }
         }
     } else {
         val listState = remember(groupId) {
@@ -270,6 +278,7 @@ private fun ServerListPage(
 
                 }
             }
+            item(key = "server-page-settings") { MainSettingsButton(onOpenSettings) }
         }
     }
 }
@@ -398,19 +407,11 @@ private fun ServerListItem(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(row.remarks, Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyLarge.copy(lineBreak = androidx.compose.ui.text.style.LineBreak.Paragraph), maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    row.typeDescription,
-                    modifier = Modifier.weight(1f, fill = false),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+            if (testResult.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     testResult,
+                    modifier = Modifier.align(Alignment.End),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (row.testDelayMillis < 0L) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.primary,

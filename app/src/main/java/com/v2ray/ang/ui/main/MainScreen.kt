@@ -1,9 +1,6 @@
 package com.v2ray.ang.ui.main
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import com.v2ray.ang.ui.compose.BrandButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,14 +16,11 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,6 +52,7 @@ fun MainScreen(
     onNavigate: (MainDestination) -> Unit,
 ) {
     val uiState by mainViewModel.uiState.collectAsStateWithLifecycle()
+    val billingState by mainViewModel.billingState.collectAsStateWithLifecycle()
     val groups = uiState.groups
     val isLoading by mainViewModel.isLoading.collectAsStateWithLifecycle()
     val isRunning = uiState.isRunning
@@ -67,10 +62,9 @@ fun MainScreen(
     val confirmRemove = uiState.confirmRemove
     val shareQRCodeBitmap = uiState.shareQRCodeBitmap
 
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    var showSettings by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    var showSearch by rememberSaveable { mutableStateOf(false) }
-    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val searchQuery = ""
     var showDelAllConfirm by remember { mutableStateOf(false) }
     var showDelDuplicateConfirm by remember { mutableStateOf(false) }
     var showDelInvalidConfirm by remember { mutableStateOf(false) }
@@ -153,6 +147,8 @@ fun MainScreen(
         )
     }
 
+    if (billingState.visible) BillingDialog(billingState, onAction)
+
     if (uiState.showPasswordDialog) {
         TnglPasswordDialog(
             busy = uiState.authBusy, error = uiState.authError,
@@ -188,56 +184,28 @@ fun MainScreen(
         QRCodeDialog(bitmap = shareQRCodeBitmap, onDismiss = { onAction(MainAction.DismissQRCodeDialog) })
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            MainDrawerContent(
-                drawerState = drawerState,
-                onNavigate = { route ->
-                    scope.launch { drawerState.close() }
-                    onNavigate(route)
-                }
-            )
-        }
-    ) {
-        Scaffold(
+    if (showSettings) {
+        MainSettingsHub(
+            onBack = { showSettings = false },
+            onNavigate = onNavigate,
+            onAction = { action ->
+                showSettings = false
+                onAction(action)
+            }
+        )
+        return
+    }
+
+    Scaffold(
             contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
             containerColor = MaterialTheme.colorScheme.surface,
-            topBar = {
-                MainTopBar(
-                    isLoading = isLoading,
-                    showSearch = showSearch,
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { query: String ->
-                        searchQuery = query
-                        onAction(MainAction.Search(query))
-                    },
-                    onSearchClose = {
-                        searchQuery = ""
-                        onAction(MainAction.Search(""))
-                        showSearch = false
-                    },
-                    onSearchToggle = { show: Boolean -> showSearch = show },
-                    onMenuClick = { scope.launch { drawerState.open() } },
-                    onAction = onAction,
-                    onMoreMenuAction = { action ->
-                        when (action) {
-                            MainMoreMenuAction.UpdateSubscriptions -> onAction(MainAction.UpdateSubscriptions)
-                            MainMoreMenuAction.ChangeAccount -> onAction(MainAction.ChangeAccount)
-                            MainMoreMenuAction.ChangePassword -> onAction(MainAction.ShowPasswordDialog)
-                            MainMoreMenuAction.RoutingSettings -> onNavigate(MainDestination.Routing)
-                        }
-                    }
-                )
-            },
+            topBar = { MainTopBar(isLoading = isLoading) },
             bottomBar = {
-                if (!showSearch) {
                     MainBottomBar(
                         displayText = displayText,
                         isRunning = isRunning,
                         onAction = onAction
                     )
-                }
             },
             floatingActionButton = {},
         ) { innerPadding ->
@@ -277,6 +245,8 @@ fun MainScreen(
 
                         GroupPagerPage(
                             groupId = group.id,
+                            onOpenSettings = { showSettings = true },
+                            onRenew = { onAction(MainAction.ShowBilling) },
                             mainViewModel = mainViewModel,
                             selectedGuid = selectedGuid,
                             locateTarget = uiState.locateTarget,
@@ -326,9 +296,12 @@ fun MainScreen(
                     BrandButton(onClick = { onAction(MainAction.UpdateSubscriptions) }) {
                         Text(stringResource(R.string.tngl_login_button))
                     }
+                    BrandButton(onClick = { onAction(MainAction.ShowBilling) }) {
+                        Text(stringResource(R.string.renew_subscription))
+                    }
+                    MainSettingsButton { showSettings = true }
                 }
             }
             }
         }
-    }
 }

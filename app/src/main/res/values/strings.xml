@@ -617,4 +617,24 @@
     <string name="auth_cancel">Cancel</string>
     <string name="auth_working">Please wait…</string>
     <string name="auth_activation_help">Enter the one-time code provided with your subscription and set a password.</string>
+    <string name="hub_account">Account</string>
+    <string name="hub_app">App and connection</string>
+    <string name="hub_tools">Tools and support</string>
+    <string name="renew_subscription">Renew subscription</string>
+    <string name="payment_soon_title">Payments are coming soon</string>
+    <string name="payment_soon_message">Subscription renewal and online payments are still in development. Please check back later.</string>
+    <string name="payment_soon_close">Got it</string>
+    <string name="billing_plan">%1$d ₽ · %2$d days</string>
+    <string name="billing_order">Order: %1$s\nAccount: %2$s</string>
+    <string name="billing_create">Create renewal order</string>
+    <string name="billing_check">Check status</string>
+    <string name="billing_pending">Awaiting payment verification by the administrator.</string>
+    <string name="billing_processing">Payment is being processed. Contact the administrator before paying again.</string>
+    <string name="billing_paid">Payment confirmed. Subscription renewed.</string>
+    <string name="billing_syncing">Renewal accepted. Servers are synchronizing; contact the administrator if access does not resume.</string>
+    <string name="billing_pay">Pay</string>
+    <string name="billing_payment_instructions">On the payment page, enter your login “%1$s” in the “Name” field and pay 150 ₽. After payment, return to the app and wait for administrator confirmation. If you have already paid, do not pay again.</string>
+    <string name="billing_manual_note">Opening the payment page does not confirm payment. The administrator checks the payment and renews your subscription. Use “Check status” after payment.</string>
+    <string name="billing_unavailable">Renewal is not configured yet. Please contact the administrator.</string>
+    <string name="billing_manual_review">This subscription needs an administrator review before renewal.</string>
 </resources>
