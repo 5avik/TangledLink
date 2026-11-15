@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.v2ray.ang.AngApplication
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.R
@@ -94,8 +95,42 @@ class MainActivity : HelperBaseComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mainViewModel.onAction(MainAction.Initialize)
+        handleBillingReturn(intent)
+        lifecycleScope.launch {
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+                mainViewModel.billingPaymentEvents.collect { url -> Utils.openUri(this@MainActivity, url) }
+            }
+        }
 
         checkAndRequestPermission(PermissionType.POST_NOTIFICATIONS) {}
+        if (savedInstanceState == null) lifecycleScope.launch {
+            if (mainViewModel.shouldConnectOnLaunch()) {
+                requestServiceStart()
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleBillingReturn(intent)
+    }
+
+    private fun handleBillingReturn(incoming: Intent?) {
+        if (BillingReturnLink.accepts(incoming?.action, incoming?.dataString)) {
+            // Ignore extras, invoiceId and status: ownership and payment are checked by the server.
+            mainViewModel.onAction(MainAction.ReturnFromBilling)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mainViewModel.observeTraffic(true)
+    }
+
+    override fun onPause() {
+        mainViewModel.observeTraffic(false)
+        super.onPause()
     }
 
     @Composable
@@ -106,6 +141,11 @@ class MainActivity : HelperBaseComponentActivity() {
             onAction = { action ->
                 when (action) {
                     MainAction.ToggleService -> handleFabAction()
+                    MainAction.OpenSystemVpnSettings -> openSystemSettings(Intent(android.provider.Settings.ACTION_VPN_SETTINGS))
+                    MainAction.OpenNotificationSettings -> openSystemSettings(
+                        if (Build.VERSION.SDK_INT >= 26) Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)
+                        else Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:$packageName")))
                     MainAction.TestCurrentServer -> handleLayoutTestClick()
                     MainAction.ChangeAccount -> {
                         LauncherManager.stopService(this)
@@ -162,6 +202,12 @@ class MainActivity : HelperBaseComponentActivity() {
         settingsActivityLauncher.launch(intent)
     }
 
+    private fun openSystemSettings(intent: Intent) {
+        try { startActivity(intent) }
+        catch (error: android.content.ActivityNotFoundException) { toastError(R.string.toast_failure) }
+        catch (error: SecurityException) { toastError(R.string.toast_failure) }
+    }
+
     private fun handleFabAction() {
         if (mainViewModel.uiState.value.isRunning) {
             LauncherManager.stopService(this)
@@ -194,6 +240,7 @@ class MainActivity : HelperBaseComponentActivity() {
         ) {
             checkAndRequestPermission(PermissionType.ACCESS_LOCAL_NETWORK) {}
         }
+        mainViewModel.connectionStarting()
         LauncherManager.startService(this)
     }
 

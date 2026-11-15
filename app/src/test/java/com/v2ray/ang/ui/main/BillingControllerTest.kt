@@ -3,12 +3,13 @@ package com.v2ray.ang.ui.main
 import com.v2ray.ang.R
 import com.v2ray.ang.handler.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class BillingControllerTest {
     private val plan = BillingPlan("month30", 15000, 30)
-    private val pending = BillingOrder("TL-test", "svk", "pending", null, false)
+    private val pending = BillingOrder("TL-test", "svk", "pending", null, false, "https://pay.lava.top/test")
     private class Fake(var value: BillingSnapshot) : BillingGateway {
         var failure: String? = null
         var created = 0
@@ -23,6 +24,85 @@ class BillingControllerTest {
             return requireNotNull(value.order)
         }
     }
+    @Test fun browserReturnOnlyLoadsServerStatusAndNeverCreatesPayment() {
+        val scope=CoroutineScope(SupervisorJob()+Dispatchers.Unconfined)
+        val fake=Fake(BillingSnapshot(plan,"",pending.copy(status="paid")))
+        var paid=0
+        val controller=BillingController(scope,Dispatchers.Unconfined,fake){paid++}
+        val urls=mutableListOf<String>()
+        scope.launch {controller.paymentEvents.collect {urls.add(it)}}
+        try {
+            controller.returnFromPayment()
+            assertTrue(controller.uiState.value.visible)
+            assertTrue(controller.uiState.value.hasCreatedOrder)
+            assertEquals("paid",controller.uiState.value.snapshot?.order?.status)
+            assertEquals(1,controller.uiState.value.returnSequence)
+            assertEquals(1,paid)
+            assertEquals(0,fake.created)
+            assertTrue(urls.isEmpty())
+            controller.returnFromPayment()
+            assertEquals(2,controller.uiState.value.returnSequence)
+            assertEquals(1,paid)
+            fake.failure="session_expired"
+            controller.returnFromPayment()
+            assertEquals(R.string.auth_session_expired,controller.uiState.value.error)
+            assertNull(controller.uiState.value.snapshot)
+            assertEquals(0,fake.created)
+            assertTrue(urls.isEmpty())
+        } finally {scope.cancel()}
+    }
+    @Test fun pendingBrowserReturnWaitsForServerConfirmation() = runBlocking {
+        val scope=CoroutineScope(SupervisorJob()+Dispatchers.Unconfined)
+        var loads=0
+        val gateway=object:BillingGateway {
+            override fun load():BillingSnapshot {
+                loads++
+                return BillingSnapshot(plan,"",pending.copy(status=if(loads==1)"pending" else "paid"))
+            }
+            override fun create(planId:String):BillingOrder=error("Must not create from a return link")
+        }
+        var paid=0
+        val controller=BillingController(scope,Dispatchers.Unconfined,gateway){paid++}
+        try {
+            controller.returnFromPayment()
+            assertTrue(controller.uiState.value.busy)
+            assertEquals(0,paid)
+            withTimeout(4000) { controller.uiState.first {it.visible&&!it.busy} }
+            assertEquals(2,loads)
+            assertEquals(1,paid)
+        } finally {scope.cancel()}
+    }
+    @Test fun selectedPlanCreatesPaymentAndEmitsNavigationExactlyOnce() {
+        val scope=CoroutineScope(SupervisorJob()+Dispatchers.Unconfined)
+        val selected=BillingPlan("month90",45000,90)
+        val fake=Fake(BillingSnapshot(selected,"",pending,listOf(plan,selected)))
+        val controller=BillingController(scope,Dispatchers.Unconfined,fake){}
+        val urls=mutableListOf<String>()
+        scope.launch {controller.paymentEvents.collect {urls.add(it)}}
+        try {
+            controller.open("month90")
+            assertEquals("month90",controller.uiState.value.planId)
+            assertTrue(urls.isEmpty())
+            controller.email("buyer@example.com");controller.create()
+            assertEquals(listOf("https://pay.lava.top/test"),urls)
+            controller.refresh();controller.close();controller.open("month90")
+            assertEquals(1,urls.size)
+        } finally {scope.cancel()}
+    }
+    @Test fun invalidEmailAndFailedRequestsNeverOpenBrowser() {
+        val scope=CoroutineScope(SupervisorJob()+Dispatchers.Unconfined)
+        val fake=Fake(BillingSnapshot(plan,"",null))
+        val controller=BillingController(scope,Dispatchers.Unconfined,fake){}
+        val urls=mutableListOf<String>()
+        scope.launch {controller.paymentEvents.collect {urls.add(it)}}
+        try {
+            controller.open();controller.create()
+            assertTrue(urls.isEmpty())
+            controller.email("buyer@example.com");fake.failure="server_error";controller.create()
+            assertTrue(urls.isEmpty())
+            assertEquals(R.string.auth_server_error,controller.uiState.value.error)
+        } finally {scope.cancel()}
+    }
     @Test fun emptyOrderCreationAndPaidRefreshAreSeparate() {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val fake = Fake(BillingSnapshot(plan, "Instructions", null))
@@ -35,6 +115,7 @@ class BillingControllerTest {
             assertFalse(controller.uiState.value.busy)
             assertNull(controller.uiState.value.snapshot?.order)
             fake.value = fake.value.copy(order = pending)
+            controller.email("buyer@example.com")
             controller.create()
             assertEquals(1, fake.created)
             assertEquals(pending, controller.uiState.value.snapshot?.order)
@@ -58,7 +139,7 @@ class BillingControllerTest {
             fake.value = fake.value.copy(order = pending)
             controller.refresh()
             val before = controller.uiState.value
-            assertEquals("https://choco.tips/qr/50156198", controller.paymentUrl())
+            assertEquals("https://pay.lava.top/test", controller.paymentUrl())
             assertEquals(before, controller.uiState.value)
             assertEquals(0, refreshed)
             assertEquals(0, fake.created)
@@ -109,9 +190,26 @@ class BillingControllerTest {
             controller.refresh()
             assertNull(controller.uiState.value.error)
             fake.failure = "server_error"
+            controller.email("buyer@example.com")
             controller.create()
             assertEquals(pending, controller.uiState.value.snapshot?.order)
             assertEquals(0, refreshed)
+        } finally { scope.cancel() }
+    }
+    @Test fun invalidEmailAndUnknownPlanNeverCreatePayment() {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val fake = Fake(BillingSnapshot(plan, "Instructions", null))
+        val controller = BillingController(scope, Dispatchers.Unconfined, fake) {}
+        try {
+            controller.open()
+            for (email in listOf("", "svk", "bad@", "a b@example.com")) {
+                controller.email(email); controller.create()
+                assertEquals(R.string.billing_invalid_email, controller.uiState.value.error)
+                assertEquals(0, fake.created)
+            }
+            controller.email("buyer@example.com"); controller.selectPlan("unknown"); controller.create()
+            assertEquals(R.string.billing_manual_review, controller.uiState.value.error)
+            assertEquals(0, fake.created)
         } finally { scope.cancel() }
     }
     @Test fun pendingNodeSyncDoesNotRefreshSubscriptionOrLoseAccountIsolation() {

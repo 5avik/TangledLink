@@ -628,7 +628,7 @@
     <string name="billing_order">Order: %1$s\nAccount: %2$s</string>
     <string name="billing_create">Create renewal order</string>
     <string name="billing_check">Check status</string>
-    <string name="billing_pending">Awaiting payment verification by the administrator.</string>
+    <string name="billing_pending">Awaiting payment confirmation from lava.top.</string>
     <string name="billing_processing">Payment is being processed. Contact the administrator before paying again.</string>
     <string name="billing_paid">Payment confirmed. Subscription renewed.</string>
     <string name="billing_syncing">Renewal accepted. Servers are synchronizing; contact the administrator if access does not resume.</string>

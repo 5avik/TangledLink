@@ -16,9 +16,18 @@ https://docs.github.com/en/rest/releases/releases#get-the-latest-release
 5. Attach the corresponding APK and identify the commit and signing certificate.
 
 Branch pushes only build, test and upload debug APKs as Actions artifacts.
-The explicitly authorized tag v0.9.3-test additionally publishes a prerelease after
-both Android and backend jobs succeed, with --prerelease and --latest=false.
-The workflow does not create tags or publish full stable releases.
+The v0.9.4-test tag also runs CI. Public releases are created explicitly after
+both Android and backend jobs succeed, using --prerelease and --latest=false.
+CI debug artifacts are QA-only: their signing key is ephemeral and does not match
+published App Links. They are not automatically attached to public releases.
+The workflow does not create tags or publish releases.
+
+Starting with 0.9.4-test, public APKs use PlaystoreRelease and the persistent local
+release keystore. Signing keys and signing.properties remain outside Git.
+The certificate SHA-256 is 24:4C:E8:07:99:7D:BD:E6:44:17:B1:2C:1F:50:86:EA:00:57:CD:C5:89:4B:D4:B9:AC:C2:24:2F:52:5C:86:C6.
+The published 0.9.3-test APK has a different CI debug certificate, so Android rejects
+an in-place upgrade from that APK. Preserve local settings/profiles before reinstalling.
+Do not uninstall user apps automatically to work around signature checks.
 
 ## Current limitations
 

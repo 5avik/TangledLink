@@ -8,7 +8,7 @@ button{cursor:pointer;border:0;border-radius:24px;padding:12px 20px;font:inherit
 table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:12px 8px;border-bottom:1px solid #304238}#preview{white-space:pre-line}
 :focus-visible{outline:3px solid #7cfc8a;outline-offset:3px}
 </style></head><body><main><a href="/">← Аккаунты</a><h1>Оплаты и продления</h1>
-<p>150 ₽ за 30 дней. Пользователь открывает страницу Choco из приложения и указывает свой логин в поле «Имя». Сверьте имя и поступление 150 ₽ с заказом, затем подтвердите оплату. Переход на сайт не подтверждает платёж.</p>
+<p>Заказы lava.top подтверждаются автоматически после серверной проверки оплаты. Ручное подтверждение и сброс доступны только для старых заказов. Переход на страницу оплаты не подтверждает платёж.</p>
 <section class="card"><h2>Создать заказ</h2><form id="create"><label>ID аккаунта (точный email в 3x-ui)<br><input id="account" required maxlength="128" pattern="[A-Za-z0-9_-]+"></label><button>Создать заказ</button></form></section>
 <p id="message" role="status" aria-live="polite"></p>
 <section class="card"><h2>Последние заказы</h2><button id="refresh">Обновить</button><div style="overflow:auto"><table><thead><tr><th>Заказ / ID</th><th>Сумма</th><th>Состояние</th><th>Действия</th></tr></thead><tbody id="orders"></tbody></table></div></section>
@@ -42,7 +42,7 @@ async function refresh() {
   const data=await api('/api/billing/orders'),target=document.getElementById('orders');target.replaceChildren();
   for(const o of data.orders) {
     const tr=document.createElement('tr');
-    for(const value of [o.id+' / '+o.account, '150 ₽', o.status+(o.pendingSync?' · узлы синхронизируются':'')+(o.error?' · '+o.error:'')]) {
+    for(const value of [o.id+' / '+o.account, (o.amountKopecks/100)+' ₽ · '+o.days+' дней', (o.provider==='lava'?'lava.top · ':'')+o.status+(o.pendingSync?' · узлы синхронизируются':'')+(o.error?' · '+o.error:'')]) {
       const td=document.createElement('td');td.textContent=value;tr.append(td);
     }
     const td=document.createElement('td'),b=document.createElement('button');b.textContent='Проверить';
@@ -50,10 +50,10 @@ async function refresh() {
       selected=null;document.getElementById('confirmation').hidden=true;
       const data=await api('/api/billing/preview',{orderId:o.id});selected=o.id;
       document.getElementById('preview').textContent='Заказ: '+o.id+'\\nАккаунт / email: '+o.account+'\\nТекущий срок: '+date(data.currentExpiry)+'\\nПосле подтверждения: '+date(data.targetExpiry)+'\\nПодключений: '+data.inboundCount+'\\nЛимит и расход трафика сохраняются.';
-      document.getElementById('confirmation').hidden=data.order.status==='paid';
+      document.getElementById('confirmation').hidden=data.order.status==='paid'||o.provider==='lava';
       message.textContent=data.order.status==='paid'?'Этот заказ уже подтверждён.':'Проверьте платёж перед подтверждением.';
     }));td.append(b);
-    if(o.status!=='paid'){
+    if(o.status!=='paid'&&o.provider!=='lava'){
       const reset=document.createElement('button');reset.type='button';reset.textContent='Сбросить заказ';reset.style.margin='8px 0';
       reset.addEventListener('click',()=>{
         if(busy||!confirm('Сбросить заказ '+o.id+' для '+o.account+' в ожидание оплаты? Срок подписки не изменится.'))return;
@@ -73,7 +73,7 @@ document.getElementById('create').addEventListener('submit',e=>{e.preventDefault
   await refresh();message.textContent='Заказ: '+data.order.id;
 });});
 document.getElementById('confirm').addEventListener('submit',e=>{e.preventDefault();if(!selected)return;
-  if(!confirm('Продлить заказ '+selected+' после проверенного поступления 150 ₽?'))return;
+  if(!confirm('Продлить заказ '+selected+' после проверенного поступления полной суммы заказа?'))return;
   work(async()=>{const data=await api('/api/billing/confirm',{orderId:selected});
     document.getElementById('confirmation').hidden=true;selected=null;await refresh();
     message.textContent=data.order.pendingSync?'Панель приняла продление; проверьте синхронизацию узлов в 3x-ui.':'Оплата подтверждена. Подписка продлена до '+date(data.order.expiresAt)+'.';

@@ -1,7 +1,8 @@
 import { createServer } from 'node:http';
 import { createAuth, ApiError } from './auth.mjs';
 import { subscription } from './upstream.mjs';
-import { panel, billing } from './billing-runtime.mjs';
+import { panel, billing, lava } from './billing-runtime.mjs';
+import { LAVA_PLANS } from './lava.mjs';
 
 process.umask(0o077);
 const base = process.env.SUBSCRIPTION_BASE;
@@ -34,7 +35,7 @@ async function json(req) {
     return value;
   } catch { throw new ApiError(400, 'invalid_json'); }
 }
-export function createApiServer({ authStore = auth, billingStore = billing, panelClient = panel, subscriptionReader = subscription } = {}) {
+export function createApiServer({ authStore = auth, billingStore = billing, panelClient = panel, subscriptionReader = subscription, lavaStore = lava } = {}) {
 const auth = authStore;
 return createServer(async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -48,18 +49,26 @@ return createServer(async (req, res) => {
     const ip = req.headers['x-real-ip'] ?? req.socket.remoteAddress;
     limit('all:' + ip, 300);
     if (req.method === 'GET' && path === '/health') return reply(200, { status: 'ok' });
+    if (req.method === 'POST' && path === '/v1/billing/webhooks/lava') {
+      if (!lavaStore) throw new ApiError(503, 'billing_unavailable');
+      lavaStore.authenticate(req.headers['x-api-key']);
+      lavaStore.receive(await json(req));
+      return reply(200, {ok:true});
+    }
     const token = (req.headers.authorization ?? '').replace(/^Bearer /, '');
     if (req.method === 'GET' && path === '/v1/billing') {
       const session = auth.session(token);
       if (!billingStore) throw new ApiError(503, 'billing_unavailable');
       return reply(200, { plan: billingStore.plan, instructions: billingStore.instructions,
-        order: billingStore.latest(session.account) });
+        plans: lavaStore ? LAVA_PLANS.map(({offerId, ...p}) => p) : [billingStore.plan],
+        order: lavaStore ? lavaStore.payment(billingStore.latest(session.account)) : billingStore.latest(session.account) });
     }
     if (req.method === 'POST' && path === '/v1/billing/orders') {
       const session = auth.session(token);
       if (!billingStore) throw new ApiError(503, 'billing_unavailable');
       limit('orders:' + session.account, 10);
       const data = await json(req);
+      if (lavaStore) return reply(200, {order:await lavaStore.checkout(session.account, data.planId, data.email)});
       if (data.planId !== billingStore.plan.id) throw new ApiError(400, 'invalid_plan');
       return reply(200, { order: await billingStore.create(session.account) });
     }
@@ -102,6 +111,9 @@ return createServer(async (req, res) => {
 }
 if (process.argv[1] && import.meta.url === new URL('file://' + process.argv[1]).href) {
 const server = createApiServer();
+const paymentWorker = lava ? setInterval(() => { lava.processPending().catch(() => {}); }, 5000) : null;
+paymentWorker?.unref();
+if (lava) lava.processPending().catch(() => {});
 server.requestTimeout = 15000;
 server.headersTimeout = 10000;
 server.maxConnections = 100;

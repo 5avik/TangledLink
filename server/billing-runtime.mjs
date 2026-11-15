@@ -7,5 +7,11 @@ if (Boolean(url) !== Boolean(token)) throw new Error('Set both XUI_URL and XUI_A
 export const panel = url ? createPanel({ url, token }) : null;
 export const billing = panel && process.env.BILLING_INSTRUCTIONS ? createBilling({
   path: process.env.BILLING_DB ?? '/var/lib/tngl-auth/billing.sqlite',
-  panel, instructions: process.env.BILLING_INSTRUCTIONS
+  panel, instructions: process.env.LAVA_API_KEY ? 'Оплатите заказ через lava.top. После оплаты вернитесь в приложение и нажмите «Проверить статус». Продление применяется автоматически.' : process.env.BILLING_INSTRUCTIONS
+}) : null;
+
+const { createLava } = await import('./lava.mjs');
+export const lava = billing && process.env.LAVA_API_KEY && process.env.LAVA_WEBHOOK_SECRET ? createLava({
+  path: process.env.BILLING_DB ?? '/var/lib/tngl-auth/billing.sqlite',
+  key: process.env.LAVA_API_KEY, secret: process.env.LAVA_WEBHOOK_SECRET, billing
 }) : null;

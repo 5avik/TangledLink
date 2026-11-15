@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "pro.tngl",
+      "sha256_cert_fingerprints": [
+        "24:4C:E8:07:99:7D:BD:E6:44:17:B1:2C:1F:50:86:EA:00:57:CD:C5:89:4B:D4:B9:AC:C2:24:2F:52:5C:86:C6",
+        "40:D2:B7:3A:C4:D1:E3:FB:D2:0A:CE:C2:05:6D:0A:D5:A4:52:3A:65:46:03:7D:AC:A8:B3:1B:76:18:F0:DC:22"
+      ]
+    }
+  }
+]

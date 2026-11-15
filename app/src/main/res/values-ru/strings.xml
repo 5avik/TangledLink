@@ -631,7 +631,7 @@
     <string name="billing_order">Заказ: %1$s\nАккаунт: %2$s</string>
     <string name="billing_create">Создать заказ на продление</string>
     <string name="billing_check">Проверить статус</string>
-    <string name="billing_pending">Ожидается проверка оплаты администратором.</string>
+    <string name="billing_pending">Ожидается подтверждение оплаты от lava.top.</string>
     <string name="billing_processing">Платёж обрабатывается. Перед повторной оплатой свяжитесь с администратором.</string>
     <string name="billing_paid">Оплата подтверждена. Подписка продлена.</string>
     <string name="billing_syncing">Продление принято. Серверы синхронизируются; если доступ не восстановился, обратитесь к администратору.</string>

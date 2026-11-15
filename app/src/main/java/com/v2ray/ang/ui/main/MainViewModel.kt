@@ -39,6 +39,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -93,7 +98,25 @@ class MainViewModel(
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
     private val billing = BillingController(viewModelScope, ioDispatcher,
         com.v2ray.ang.handler.TnglBillingClient, onPaid = { updateTnglSubscription() })
+    private val premiumStore = PremiumStore(application)
+    internal val premiumState = premiumStore.state.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PremiumPreferences())
+    private val browserInput = MutableStateFlow(PremiumBrowserInput())
+    internal val premiumBrowserInput = browserInput.asStateFlow()
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    internal val premiumBrowserState = _uiState.map { it.selectedGroupId }.distinctUntilChanged()
+        .flatMapLatest { groupId ->
+            combine(serverGroupState(groupId), premiumState, browserInput) { group, preferences, input ->
+                withContext(defaultDispatcher) {
+                    PremiumBrowserState(input, filterPremiumServers(
+                        group.rows, input, preferences.favorites,
+                        countryFlags.mapValues { dataSource.getString(it.value) }
+                    ))
+                }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PremiumBrowserState())
+    private var billingReturnPending = false
     val billingState = billing.uiState
+    val billingPaymentEvents = billing.paymentEvents
     fun billingPaymentUrl(): String? = billing.paymentUrl()
 
     // ---------- Keyword filtering ----------
@@ -137,6 +160,9 @@ class MainViewModel(
 
     private fun handleServiceEvent(event: MainServiceEvent) {
         when (event) {
+            is MainServiceEvent.Traffic -> _uiState.update { state ->
+                if (state.isRunning) state.copy(traffic = state.traffic.receive(event.snapshot)) else state
+            }
             MainServiceEvent.StateRunning -> updateRunningState(true, clearTestingText = false)
             MainServiceEvent.StateNotRunning -> updateRunningState(false, clearTestingText = false)
             MainServiceEvent.StateStartSuccess -> {
@@ -316,7 +342,29 @@ class MainViewModel(
                 _uiState.update { it.copy(shareQRCodeBitmap = null) }
             }
 
-            MainAction.ShowBilling -> billing.open()
+            is MainAction.ToggleFavorite -> viewModelScope.launch { runCatching { premiumStore.toggle(action.guid) }.onFailure { toastError(R.string.toast_failure) } }
+            is MainAction.SelectPremiumPlan -> viewModelScope.launch { runCatching { premiumStore.select(action.months) }.onFailure { toastError(R.string.toast_failure) } }
+            is MainAction.SetConnectOnLaunch -> viewModelScope.launch {
+                try { premiumStore.setConnectOnLaunch(action.enabled) }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (error: Exception) { toastError(R.string.toast_failure) }
+            }
+            is MainAction.SearchPremiumServers -> browserInput.update { it.copy(query = action.query) }
+            is MainAction.FilterPremiumServers -> if (action.filter in 0..2) browserInput.update { it.copy(filter = action.filter) }
+            is MainAction.SetLanguage -> if (action.code in setOf("ru", "en")) {
+                com.v2ray.ang.handler.AppLocaleManager.setApplicationLanguage(action.code)
+            }
+            is MainAction.BillingEmail -> billing.email(action.value)
+            is MainAction.BillingPlanSelected -> billing.selectPlan(action.id)
+            is MainAction.BeginBilling -> if (action.months in listOf(1,3,6,12)) billing.open("month" + action.months * 30)
+            MainAction.ReturnFromBilling -> {
+                billingReturnPending = true
+                if (!TnglSessionStore.token().isNullOrBlank()) {
+                    billingReturnPending = false
+                    billing.returnFromPayment()
+                } else _uiState.update { it.copy(showTnglLoginDialog = true) }
+            }
+            MainAction.ShowBilling -> billing.open("month" + premiumState.value.months * 30)
             MainAction.DismissBilling -> billing.close()
             MainAction.CreateBillingOrder -> billing.create()
             MainAction.RefreshBilling -> billing.refresh()
@@ -325,6 +373,8 @@ class MainViewModel(
                 _uiState.update { it.copy(showTnglUpdateDialog = false) }
             }
 
+            MainAction.OpenSystemVpnSettings,
+            MainAction.OpenNotificationSettings,
             MainAction.ToggleService,
             MainAction.TestCurrentServer,
             MainAction.ImportQRcode,
@@ -613,6 +663,10 @@ class MainViewModel(
                     if (dataSource.getSelectServer() !in servers) servers.firstOrNull()?.let(dataSource::setSelectServer)
                 }
                 _uiState.update { it.copy(showTnglLoginDialog = false) }
+                if (billingReturnPending) {
+                    billingReturnPending = false
+                    billing.returnFromPayment()
+                }
                 setupGroupTab(forceRefresh = true)
                 refreshSelectedGuid()
             } catch (cancelled: CancellationException) { throw cancelled }
@@ -1127,12 +1181,52 @@ class MainViewModel(
         _uiState.update { it.copy(locateTarget = null) }
     }
 
+    internal suspend fun shouldConnectOnLaunch(): Boolean {
+        initialPageReady.await()
+        return canConnectOnLaunch(premiumStore.state.first(), uiState.value)
+    }
+
     // ---------- Running state ----------
+    private var trafficPolling: Job? = null
+
+    fun observeTraffic(visible: Boolean) {
+        trafficPolling?.cancel()
+        trafficPolling = null
+        if (!visible) return
+        trafficPolling = viewModelScope.launch {
+            dataSource.sendMsg2Service(AppConfig.MSG_REGISTER_CLIENT, "")
+            uiState.map { it.isRunning }.distinctUntilChanged().collectLatest { running ->
+                if (running) while (true) {
+                    dataSource.sendMsg2Service(AppConfig.MSG_QUERY_TRAFFIC, "")
+                    delay(1_000L)
+                }
+            }
+        }
+    }
+
+    private var connectionTimeout: Job? = null
+
+    fun connectionStarting() {
+        connectionTimeout?.cancel()
+        _uiState.update { it.copy(isConnecting = true) }
+        connectionTimeout = viewModelScope.launch {
+            delay(30_000)
+            if (uiState.value.isConnecting) {
+                _uiState.update { it.copy(isConnecting = false) }
+                toastError(R.string.toast_services_failure)
+            }
+        }
+    }
+
     private fun updateRunningState(running: Boolean, clearTestingText: Boolean = true) {
+        connectionTimeout?.cancel()
+        connectionTimeout = null
         if (!running || clearTestingText) testRequests.invalidateCurrent()
         _uiState.update { state ->
             state.copy(
                 isRunning = running,
+                isConnecting = false,
+                traffic = if (running) state.traffic else TrafficUiState(),
                 isTesting = testRequests.isTesting,
                 status = if (!clearTestingText && state.isRunning == running) state.status
                 else if (running) MainStatus.Connected else MainStatus.Disconnected

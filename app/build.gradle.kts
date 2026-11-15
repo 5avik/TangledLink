@@ -91,8 +91,8 @@ android {
         applicationId = "pro.tngl"
         minSdk = 24
         targetSdk = 37
-        versionCode = 12
-        versionName = "0.9.3-test"
+        versionCode = 13
+        versionName = "0.9.4-test"
 
         val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(';')
         splits {
@@ -216,6 +216,8 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
+    implementation("androidx.navigation:navigation-compose:2.10.2")
+    implementation("androidx.datastore:datastore-preferences:1.3.0")
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

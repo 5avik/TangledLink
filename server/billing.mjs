@@ -51,7 +51,7 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
   function latest(account) {
     return publicOrder(db.prepare('SELECT * FROM billing_orders WHERE account=? ORDER BY created DESC, rowid DESC LIMIT 1').get(account));
   }
-  async function create(account) {
+  async function create(account, plan = PLAN) {
     if (!validId(account)) throw new ApiError(400, 'invalid_id');
     const existing = db.prepare("SELECT * FROM billing_orders WHERE account=? AND status<>'paid'").get(account);
     if (existing) return publicOrder(existing);
@@ -61,7 +61,7 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
       if (concurrent) return publicOrder(concurrent);
       const id = 'TL-' + randomBytes(12).toString('hex').toUpperCase();
       db.prepare('INSERT INTO billing_orders(id,account,amount,days,created) VALUES(?,?,?,?,?)')
-        .run(id, account, PLAN.amountKopecks, PLAN.days, clock());
+        .run(id, account, plan.amountKopecks, plan.days, clock());
       return publicOrder(find(id));
     });
   }
@@ -70,11 +70,21 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
     if (!order) throw new ApiError(404, 'order_not_found');
     const data = await panel.getClient(order.account);
     return { order: publicOrder(order), currentExpiry: data.client.expiryTime,
-      targetExpiry: order.target_expiry ?? renewalTarget(data, clock()),
+      targetExpiry: order.target_expiry ?? renewalTarget(data, clock(), order.days),
       inboundCount: data.inboundIds.length };
   }
   const active = new Set();
-  async function confirm(id) {
+  function providerInvoice(id) {
+    return db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='lava_invoices'").get()
+      ? db.prepare('SELECT invoice_id,last_error FROM lava_invoices WHERE order_id=?').get(id) : null;
+  }
+  async function confirm(id, paymentReference = null) {
+    const invoice = providerInvoice(id);
+    const previous = typeof paymentReference === 'string' && paymentReference.startsWith('lava:') &&
+      db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='lava_previous_invoices'").get()
+      ? db.prepare('SELECT invoice_id FROM lava_previous_invoices WHERE order_id=? AND invoice_id=?').get(id,paymentReference.slice(5)) : null;
+    if (invoice && !previous && (!invoice.invoice_id || paymentReference !== 'lava:' + invoice.invoice_id))
+      throw new ApiError(409, 'provider_confirmation_required');
     if (active.has(id)) throw new ApiError(409, 'confirmation_in_progress');
     active.add(id);
     let claimed = false;
@@ -85,7 +95,7 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
         if (o.status === 'paid') return o;
         if (o.lock_until > clock()) throw new ApiError(409, 'confirmation_in_progress');
         // Keep legacy references; new confirmations have a stable server-only order reference.
-        const reference = o.reference ?? 'manual:' + o.id;
+        const reference = o.reference ?? paymentReference ?? 'manual:' + o.id;
         db.prepare("UPDATE billing_orders SET reference=?,status='applying',lock_until=?,last_error=NULL WHERE id=?")
           .run(reference, clock() + 60000, id);
         claimed = true;
@@ -112,6 +122,7 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
     } finally { active.delete(id); }
   }
   async function reset(id) {
+    if (providerInvoice(id)) throw new ApiError(409, 'provider_order_cannot_reset');
     if (active.has(id)) throw new ApiError(409, 'confirmation_in_progress');
     active.add(id);
     let claimed = false;
@@ -149,7 +160,7 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
   return {
     plan: PLAN, instructions, create, latest, preview, confirm, reset,
     list: () => db.prepare('SELECT * FROM billing_orders ORDER BY created DESC, rowid DESC LIMIT 100').all()
-      .map(o => ({ ...publicOrder(o), reference: o.reference, error: o.last_error })),
+      .map(o => ({ ...publicOrder(o), provider: providerInvoice(o.id) ? 'lava' : null, reference: o.reference, error: o.last_error ?? providerInvoice(o.id)?.last_error })),
     close: () => db.close()
   };
 }

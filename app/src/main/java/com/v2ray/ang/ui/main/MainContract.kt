@@ -21,6 +21,8 @@ data class MainUiState(
     val selectedGroupId: String = "",
     val selectedGuid: String? = null,
     val isRunning: Boolean = false,
+    val isConnecting: Boolean = false,
+    val traffic: TrafficUiState = TrafficUiState(),
     val isTesting: Boolean = false,
     val status: MainStatus = MainStatus.Disconnected,
     val locateTarget: LocateTarget? = null,
@@ -33,12 +35,26 @@ data class MainUiState(
     val authError: Int? = null,
     val showTnglUpdateDialog: Boolean = false,
     val updateResult: com.v2ray.ang.dto.CheckUpdateResult? = null
-)
+) {
+    /** Successful authentication stores the login as the dedicated TNGL subscription name. */
+    val accountLogin: String?
+        get() = if (showTnglLoginDialog) null else groups
+            .firstOrNull { it.id == com.v2ray.ang.AppConfig.TNGL_SUB_ID }
+            ?.remarks?.trim()?.takeIf { it.isNotEmpty() }
+}
 
 /**
  * All possible user interaction intents
  */
 sealed interface MainAction {
+    data class ToggleFavorite(val guid: String) : MainAction
+    data class SelectPremiumPlan(val months: Int) : MainAction
+    data class SetConnectOnLaunch(val enabled: Boolean) : MainAction
+    data class SetLanguage(val code: String) : MainAction
+    data class SearchPremiumServers(val query: String) : MainAction
+    data class FilterPremiumServers(val filter: Int) : MainAction
+    data object OpenSystemVpnSettings : MainAction
+    data object OpenNotificationSettings : MainAction
     data object Initialize : MainAction
     data object RefreshGroups : MainAction
     data object ToggleService : MainAction
@@ -78,8 +94,12 @@ sealed interface MainAction {
     data object LocateHandled : MainAction
 
     data object ShowBilling : MainAction
+    data object ReturnFromBilling : MainAction
+    data class BeginBilling(val months: Int) : MainAction
     data object DismissBilling : MainAction
     data object CreateBillingOrder : MainAction
+    data class BillingEmail(val value: String) : MainAction
+    data class BillingPlanSelected(val id: String) : MainAction
     data object RefreshBilling : MainAction
     data object OpenBillingPayment : MainAction
     data object ChangeAccount : MainAction

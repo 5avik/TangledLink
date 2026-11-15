@@ -1,10 +1,9 @@
 package com.v2ray.ang.ui.main
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.platform.app.InstrumentationRegistry
 import com.v2ray.ang.R
 import com.v2ray.ang.handler.*
@@ -14,39 +13,51 @@ import org.junit.Test
 
 class BillingDialogTest {
     @get:Rule val compose = createComposeRule()
-    @Test fun orderCanBeCreatedAndStatusRefreshedWithoutClaimingPayment() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        var action: MainAction? = null
-        compose.setContent {
-            MaterialTheme {
-                BillingDialog(BillingUiState(visible = true, snapshot = BillingSnapshot(
-                    BillingPlan("month30", 15000, 30), "Test payment instructions", null
-                ))) { action = it }
-            }
-        }
-        compose.onNodeWithText(context.getString(R.string.billing_create)).performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(MainAction.CreateBillingOrder, action) }
-        compose.onNodeWithText(context.getString(R.string.billing_check)).performClick()
-        compose.runOnIdle { assertEquals(MainAction.RefreshBilling, action) }
-        compose.onNodeWithText(context.getString(R.string.billing_paid)).assertDoesNotExist()
-        compose.onNodeWithText(context.getString(R.string.billing_pay)).assertDoesNotExist()
-    }
-    @Test fun pendingOrderShowsLoginAndPaymentActionWithoutConfirmingIt() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        var action: MainAction? = null
-        compose.setContent {
-            MaterialTheme {
-                BillingDialog(BillingUiState(visible = true, snapshot = BillingSnapshot(
-                    BillingPlan("month30", 15000, 30), "Test payment instructions",
-                    BillingOrder("TL-example", "svk", "pending", null, false)
-                ))) { action = it }
-            }
-        }
-        compose.onNodeWithText(context.getString(R.string.billing_payment_instructions, "svk")).performScrollTo().assertExists()
+    private val plan = BillingPlan("month30",15000,30)
+    @Test fun emailIsTheOnlyInputAndPaymentCanBeSubmittedWithImeOpen() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        val state=mutableStateOf(BillingUiState(visible=true,planId="month90",
+            snapshot=BillingSnapshot(plan,"Must not repeat",null,listOf(plan,BillingPlan("month90",45000,90)))))
+        var action:MainAction?=null
+        compose.setContent { MaterialTheme { BillingDialog(state.value) {
+            action=it
+            if(it is MainAction.BillingEmail)state.value=state.value.copy(email=it.value)
+        } } }
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(1)
+        compose.onNodeWithText("Must not repeat").assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.billing_plan,450,90)).assertDoesNotExist()
+        val field=compose.onNode(hasSetTextAction())
+        field.performScrollTo().performClick()
+        field.performTextInput("buyer@example.com")
         compose.onNodeWithText(context.getString(R.string.billing_pay)).performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(MainAction.OpenBillingPayment, action) }
-        compose.onNodeWithText(context.getString(R.string.billing_order, "TL-example", "svk")).performScrollTo().assertExists()
-        compose.onNodeWithText(context.getString(R.string.billing_pending)).performScrollTo().assertExists()
-        compose.onNodeWithText(context.getString(R.string.billing_create)).assertDoesNotExist()
+        compose.runOnIdle {
+            assertEquals("buyer@example.com",state.value.email)
+            assertEquals("month90",state.value.planId)
+            assertEquals(MainAction.CreateBillingOrder,action)
+        }
+    }
+    @Test fun pendingOrderHasOneStatusAndNoRepeatedInstructions() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        var action:MainAction?=null
+        compose.setContent { MaterialTheme { BillingDialog(BillingUiState(visible=true,
+            snapshot=BillingSnapshot(plan,"Must not repeat",
+                BillingOrder("TL-example","svk","pending",null,false,"https://pay.lava.top/test")))) {action=it} } }
+        compose.onNodeWithText("Must not repeat").assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.billing_lava_instructions)).assertDoesNotExist()
+        compose.onAllNodesWithText(context.getString(R.string.billing_pending)).assertCountEquals(1)
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+        compose.onNodeWithText(context.getString(R.string.billing_pay)).performClick()
+        compose.runOnIdle {assertEquals(MainAction.OpenBillingPayment,action)}
+        compose.onNodeWithText(context.getString(R.string.billing_check)).performClick()
+        compose.runOnIdle {assertEquals(MainAction.RefreshBilling,action)}
+    }
+    @Test fun loadingAndFailureDoNotEnableSubmission() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        val state=mutableStateOf(BillingUiState(visible=true,busy=true,
+            snapshot=BillingSnapshot(plan,"",null)))
+        compose.setContent { MaterialTheme {BillingDialog(state.value){}} }
+        compose.onNodeWithText(context.getString(R.string.billing_pay)).performScrollTo().assertIsNotEnabled()
+        compose.runOnIdle {state.value=state.value.copy(busy=false,error=R.string.auth_server_error)}
+        compose.onNodeWithText(context.getString(R.string.auth_server_error)).performScrollTo().assertIsDisplayed()
     }
 }
