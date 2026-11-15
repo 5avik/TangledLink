@@ -65,7 +65,7 @@ index eeee0e1..7d78b86 100644
 +                <category android:name="android.intent.category.BROWSABLE" />
 +                <data android:scheme="tangledlink" android:host="billing" android:path="/return" />
 +            </intent-filter>
- 
+
              <meta-data
                  android:name="android.app.shortcuts"
 diff --git i/app/src/main/java/com/v2ray/ang/ui/main/BillingController.kt w/app/src/main/java/com/v2ray/ang/ui/main/BillingController.kt
@@ -77,7 +77,7 @@ index 775e03d..7b73dd1 100644
  import kotlinx.coroutines.flow.asStateFlow
  import kotlinx.coroutines.flow.update
 +import kotlinx.coroutines.flow.receiveAsFlow
- 
+
  data class BillingUiState(
      val visible: Boolean = false,
      val busy: Boolean = false,
@@ -93,7 +93,7 @@ index 775e03d..7b73dd1 100644
 -        get() = visible && !busy && error == null && snapshot?.order?.status == "pending"
 +        get() = visible && !busy && error == null && snapshot?.order?.status == "pending" && snapshot.order.paymentUrl?.startsWith("https://") == true
  }
- 
+
  /** Owned by MainViewModel. All server operations run on its IO dispatcher. */
 @@ -31,35 +36,68 @@ internal class BillingController(
      private var job: Job? = null
@@ -101,7 +101,7 @@ index 775e03d..7b73dd1 100644
      private var generation = 0
 +    private val payments = kotlinx.coroutines.channels.Channel<String>(kotlinx.coroutines.channels.Channel.BUFFERED)
 +    val paymentEvents = payments.receiveAsFlow()
- 
+
 -    fun open() {
 +    fun open(planId: String = "month30") {
          generation++
@@ -129,7 +129,7 @@ index 775e03d..7b73dd1 100644
 -        com.v2ray.ang.handler.TnglBillingClient.PAYMENT_URL
 +        state.value.snapshot?.order?.paymentUrl
      } else null
- 
+
 +    fun email(value: String) { if (!state.value.busy) state.update { it.copy(email = value.take(254), error = null) } }
 +    fun selectPlan(value: String) { if (!state.value.busy) state.update { it.copy(planId = value, error = null) } }
      fun refresh() = run { gateway.load() }
@@ -202,7 +202,7 @@ index 950f72a..ee658f6 100644
 +                mainViewModel.billingPaymentEvents.collect { url -> Utils.openUri(this@MainActivity, url) }
 +            }
 +        }
- 
+
          checkAndRequestPermission(PermissionType.POST_NOTIFICATIONS) {}
 +        if (savedInstanceState == null) lifecycleScope.launch {
 +            if (mainViewModel.shouldConnectOnLaunch()) {
@@ -233,7 +233,7 @@ index 950f72a..ee658f6 100644
 +        mainViewModel.observeTraffic(false)
 +        super.onPause()
      }
- 
+
      @Composable
 @@ -106,6 +141,11 @@ class MainActivity : HelperBaseComponentActivity() {
              onAction = { action ->
@@ -250,7 +250,7 @@ index 950f72a..ee658f6 100644
 @@ -162,6 +202,12 @@ class MainActivity : HelperBaseComponentActivity() {
          settingsActivityLauncher.launch(intent)
      }
- 
+
 +    private fun openSystemSettings(intent: Intent) {
 +        try { startActivity(intent) }
 +        catch (error: android.content.ActivityNotFoundException) { toastError(R.string.toast_failure) }
@@ -267,7 +267,7 @@ index 950f72a..ee658f6 100644
 +        mainViewModel.connectionStarting()
          LauncherManager.startService(this)
      }
- 
+
 diff --git i/app/src/main/java/com/v2ray/ang/ui/main/MainContract.kt w/app/src/main/java/com/v2ray/ang/ui/main/MainContract.kt
 index cbe68f9..7beef4b 100644
 --- i/app/src/main/java/com/v2ray/ang/ui/main/MainContract.kt
@@ -293,7 +293,7 @@ index cbe68f9..7beef4b 100644
 +            .firstOrNull { it.id == com.v2ray.ang.AppConfig.TNGL_SUB_ID }
 +            ?.remarks?.trim()?.takeIf { it.isNotEmpty() }
 +}
- 
+
  /**
   * All possible user interaction intents
   */
@@ -311,7 +311,7 @@ index cbe68f9..7beef4b 100644
      data object ToggleService : MainAction
 @@ -78,8 +94,12 @@ sealed interface MainAction {
      data object LocateHandled : MainAction
- 
+
      data object ShowBilling : MainAction
 +    data object ReturnFromBilling : MainAction
 +    data class BeginBilling(val months: Int) : MainAction
@@ -362,10 +362,10 @@ index 47e3160..ff753d7 100644
      val billingState = billing.uiState
 +    val billingPaymentEvents = billing.paymentEvents
      fun billingPaymentUrl(): String? = billing.paymentUrl()
- 
+
      // ---------- Keyword filtering ----------
 @@ -137,6 +160,9 @@ class MainViewModel(
- 
+
      private fun handleServiceEvent(event: MainServiceEvent) {
          when (event) {
 +            is MainServiceEvent.Traffic -> _uiState.update { state ->
@@ -377,7 +377,7 @@ index 47e3160..ff753d7 100644
 @@ -316,7 +342,29 @@ class MainViewModel(
                  _uiState.update { it.copy(shareQRCodeBitmap = null) }
              }
- 
+
 -            MainAction.ShowBilling -> billing.open()
 +            is MainAction.ToggleFavorite -> viewModelScope.launch { runCatching { premiumStore.toggle(action.guid) }.onFailure { toastError(R.string.toast_failure) } }
 +            is MainAction.SelectPremiumPlan -> viewModelScope.launch { runCatching { premiumStore.select(action.months) }.onFailure { toastError(R.string.toast_failure) } }
@@ -408,7 +408,7 @@ index 47e3160..ff753d7 100644
 @@ -325,6 +373,8 @@ class MainViewModel(
                  _uiState.update { it.copy(showTnglUpdateDialog = false) }
              }
- 
+
 +            MainAction.OpenSystemVpnSettings,
 +            MainAction.OpenNotificationSettings,
              MainAction.ToggleService,
@@ -428,7 +428,7 @@ index 47e3160..ff753d7 100644
 @@ -1127,12 +1181,52 @@ class MainViewModel(
          _uiState.update { it.copy(locateTarget = null) }
      }
- 
+
 +    internal suspend fun shouldConnectOnLaunch(): Boolean {
 +        initialPageReady.await()
 +        return canConnectOnLaunch(premiumStore.state.first(), uiState.value)
