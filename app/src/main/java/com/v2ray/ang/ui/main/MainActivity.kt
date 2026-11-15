@@ -95,7 +95,8 @@ class MainActivity : HelperBaseComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mainViewModel.onAction(MainAction.Initialize)
-        handleBillingReturn(intent)
+        // An existing browser intent is not a new return after activity recreation.
+        if (savedInstanceState == null) handleBillingReturn(intent)
         lifecycleScope.launch {
             repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
                 mainViewModel.billingPaymentEvents.collect { url -> Utils.openUri(this@MainActivity, url) }
@@ -158,9 +159,6 @@ class MainActivity : HelperBaseComponentActivity() {
                         Intent(this, com.v2ray.ang.ui.checkupdate.UpdateDownloadActivity::class.java)
                             .putExtra("downloadUrl", action.url)
                     )
-                    MainAction.OpenBillingPayment -> mainViewModel.billingPaymentUrl()?.let {
-                        Utils.openUri(this, it)
-                    }
                     is MainAction.OpenSubscriptionLink -> openSubscriptionLink(action.url)
                     else -> mainViewModel.onAction(action)
                 }

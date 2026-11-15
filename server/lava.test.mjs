@@ -10,7 +10,7 @@ import {DatabaseSync} from 'node:sqlite';
 const invoiceId='11111111-1111-4111-8111-111111111111', secret='s'.repeat(64);
 function fixture(plan=LAVA_PLANS[0]) {
   const dir=mkdtempSync(join(tmpdir(),'lava-test-')),path=join(dir,'billing.sqlite');
-  let expiry=2000000000000, writes=0, creations=0, status='COMPLETED',amount=plan.amountKopecks/100, email='buyer@example.com',fail=false;
+  let expiry=2000000000000, writes=0, creations=0, status='COMPLETED',amount=plan.amountKopecks/100, email='buyer@example.com',fail=false,failCreation=false;
   const panel={
     getClient:async()=>({client:{id:1,enable:true,expiryTime:expiry,totalGB:0},usedTraffic:0,inboundIds:[1]}),
     setExpiry:async(account,before,target)=>{expiry=target;writes++;if(fail){fail=false;throw new Error('ambiguous');}return {};}
@@ -19,6 +19,7 @@ function fixture(plan=LAVA_PLANS[0]) {
   const fetcher=async(url,options)=>{
     if(options.method==='POST'){
       creations++;
+      if (failCreation) throw new Error('ambiguous invoice timeout');
       const request=JSON.parse(options.body);
       assert.equal(request.periodicity,'ONE_TIME');
       assert.equal(request.paymentProvider,'PAY2ME');
@@ -27,11 +28,11 @@ function fixture(plan=LAVA_PLANS[0]) {
         assert.equal(request[field],'https://app.tngl.pro/billing/return');
       return {ok:true,json:async()=>({id:creations===1?invoiceId:'22222222-2222-4222-8222-222222222222',amountTotal:{currency:'RUB',amount:plan.amountKopecks/100},paymentUrl:'https://pay.lava.top/test'})};
     }
-    return {ok:true,json:async()=>({id:invoiceId,type:'ONE_TIME',status,receipt:{amount,currency:'RUB'},buyer:{email}})};
+    return {ok:true,json:async()=>({id:url.split('/').at(-1),type:'ONE_TIME',status,receipt:{amount,currency:'RUB'},buyer:{email}})};
   };
   let lava=createLava({path,billing,key:'test-key',secret,fetcher});
   return {billing,get lava(){return lava},get writes(){return writes},get creations(){return creations},get expiry(){return expiry},
-    setAmount:v=>amount=v,setStatus:v=>status=v,setEmail:v=>email=v,ambiguous:()=>fail=true,
+    setAmount:v=>amount=v,setStatus:v=>status=v,setEmail:v=>email=v,ambiguous:()=>fail=true,failCreation:()=>failCreation=true,
     restart(){lava.close();lava=createLava({path,billing,key:'test-key',secret,fetcher});},
     cleanup(){lava.close();billing.close();rmSync(dir,{recursive:true,force:true});},path};
 }
@@ -105,6 +106,71 @@ test('legacy card invoice migrates once and both invoice IDs retain the same ren
   assert.equal(f.writes,1);
   await f.billing.confirm(o.id,'lava:22222222-2222-4222-8222-222222222222');
   assert.equal(f.writes,1);
+ }finally{f.cleanup();}
+});
+test('explicit retry replaces only a verified failed invoice and retains late settlement',async()=>{
+ const f=fixture();try{
+  const order=await f.lava.checkout('svk','month30','buyer@example.com');
+  f.setStatus('NEW');
+  assert.equal((await f.lava.resume('svk',order.id)).id,order.id);
+  assert.equal(f.creations,1);
+  f.setStatus('IN_PROGRESS');
+  await f.lava.resume('svk',order.id);assert.equal(f.creations,1);
+  f.setStatus('FAILED');
+  const replacement=await f.lava.resume('svk',order.id);
+  assert.equal(replacement.id,order.id);assert.equal(replacement.status,'pending');
+  assert.equal(f.creations,2);assert.equal(f.writes,0);
+  const db=new DatabaseSync(f.path);
+  assert.equal(db.prepare('SELECT invoice_id FROM lava_previous_invoices').get().invoice_id,invoiceId);
+  assert.notEqual(db.prepare('SELECT invoice_id FROM lava_invoices').get().invoice_id,invoiceId);db.close();
+  f.setStatus('NEW');await f.lava.resume('svk',order.id);assert.equal(f.creations,2);
+  f.restart();f.setStatus('COMPLETED');await f.lava.processPending();
+  assert.equal(f.billing.latest('svk').status,'paid');assert.equal(f.writes,1);
+  assert.equal((await f.lava.resume('svk',order.id)).paymentUrl,null);
+  assert.equal(f.creations,2);
+ }finally{f.cleanup();}
+});
+test('retry isolates account and order and never issues another invoice after payment',async()=>{
+ const f=fixture();try{
+  const order=await f.lava.checkout('svk','month30','buyer@example.com');
+  for(const [account,id] of [['other',order.id],['svk','unknown'],['svk',null]])
+   await assert.rejects(f.lava.resume(account,id),{code:'order_not_found'});
+  assert.equal(f.creations,1);
+  const paid=await f.lava.resume('svk',order.id);
+  assert.equal(paid.status,'paid');assert.equal(paid.paymentUrl,null);
+  assert.equal(f.creations,1);assert.equal(f.writes,1);
+ }finally{f.cleanup();}
+});
+test('mismatched payment details or unknown status cannot authorize replacement',async()=>{
+ const f=fixture();try{
+  const order=await f.lava.checkout('svk','month30','buyer@example.com');
+  f.setStatus('FAILED');f.setAmount(1);
+  await assert.rejects(f.lava.resume('svk',order.id),{code:'lava_payment_mismatch'});
+  f.setAmount(150);f.setEmail('other@example.com');
+  await assert.rejects(f.lava.resume('svk',order.id),{code:'lava_payment_mismatch'});
+  f.setEmail('buyer@example.com');f.setStatus('UNKNOWN');
+  await assert.rejects(f.lava.resume('svk',order.id),{code:'invoice_requires_review'});
+  assert.equal(f.creations,1);assert.equal(f.writes,0);
+ }finally{f.cleanup();}
+});
+test('concurrent retries claim a failed invoice once',async()=>{
+ const f=fixture();try{
+  const order=await f.lava.checkout('svk','month30','buyer@example.com');f.setStatus('FAILED');
+  const results=await Promise.allSettled([f.lava.resume('svk',order.id),f.lava.resume('svk',order.id)]);
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+  assert.equal(f.creations,2);assert.equal(f.writes,0);
+ }finally{f.cleanup();}
+});
+test('ambiguous replacement is not retried after restart and keeps the old mapping',async()=>{
+ const f=fixture();try{
+  const order=await f.lava.checkout('svk','month30','buyer@example.com');f.setStatus('FAILED');f.failCreation();
+  await assert.rejects(f.lava.resume('svk',order.id),{code:'lava_unavailable'});
+  f.restart();
+  await assert.rejects(f.lava.resume('svk',order.id),{code:'invoice_requires_review'});
+  assert.equal(f.creations,2);
+  // Even a late payment of the original invoice still renews this exact order.
+  f.setStatus('COMPLETED');await f.lava.processPending();
+  assert.equal(f.billing.latest('svk').status,'paid');assert.equal(f.writes,1);
  }finally{f.cleanup();}
 });
 test('periods and prices are fixed server-side',()=>{

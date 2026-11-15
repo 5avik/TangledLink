@@ -61,6 +61,10 @@
 <string name="premium_us">США</string>
 <string name="premium_sg">Сингапур</string>
 <string name="premium_fr">Франция</string>
+<string name="premium_ro">Румыния</string>
+<string name="premium_server">Сервер</string>
+<string name="premium_auto_select">Автовыбор</string>
+<string name="premium_auto_select_note">Автоматический выбор</string>
 <string name="premium_city_unknown">Город не указан</string>
 <string name="premium_account">Сменить аккаунт</string>
 <string name="premium_password">Сменить пароль</string>

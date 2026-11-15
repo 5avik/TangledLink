@@ -13,6 +13,7 @@ data class BillingSnapshot(val plan: BillingPlan, val instructions: String, val 
 
 interface BillingGateway {
     fun load(): BillingSnapshot
+    fun resume(orderId: String): BillingOrder = throw TnglAuthException("billing_unavailable")
     fun create(planId: String): BillingOrder
     fun create(planId: String, email: String): BillingOrder = create(planId)
 }
@@ -54,6 +55,8 @@ object TnglBillingClient : BillingGateway {
             } } ?: listOf(BillingPlan(plan.getString("id"), plan.getInt("amountKopecks"), plan.getInt("days")))
         )
     }
+    override fun resume(orderId: String): BillingOrder =
+        order(request("/v1/billing/orders", JSONObject().put("orderId", orderId)).getJSONObject("order"))
     override fun create(planId: String): BillingOrder = create(planId, "")
     override fun create(planId: String, email: String): BillingOrder =
         order(request("/v1/billing/orders", JSONObject().put("planId", planId).put("email", email)).getJSONObject("order"))

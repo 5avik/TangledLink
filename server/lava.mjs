@@ -83,6 +83,62 @@ export function createLava({ path, key, secret, billing, fetcher = fetch }) {
       throw e;
     }
   }
+  async function resume(account, orderId) {
+    const order = billing.latest(account);
+    // Account comes only from the authenticated session. Never accept a payer email
+    // or an arbitrary order ID as authority to inspect/retry another user's payment.
+    if (!order || order.id !== orderId) throw new ApiError(404,'order_not_found');
+    if (order.status !== 'pending') return payment(order);
+    const row = find(order.id);
+    if (!row || row.state !== 'ready') throw new ApiError(409,'invoice_requires_review');
+    const current = await api('/api/v1/invoices/'+row.invoice_id);
+    if (current.id !== row.invoice_id || current.type !== 'ONE_TIME' ||
+        current.receipt?.currency !== 'RUB' || current.receipt?.amount * 100 !== row.amount ||
+        current.buyer?.email !== row.email) throw new ApiError(409,'lava_payment_mismatch');
+    if (['NEW','IN_PROGRESS'].includes(current.status)) return payment(billing.latest(account));
+    if (current.status === 'COMPLETED') {
+      await processPending();
+      const latest = billing.latest(account);
+      if (latest.status === 'pending') throw new ApiError(409,'order_requires_review');
+      return payment(latest);
+    }
+    if (current.status !== 'FAILED') throw new ApiError(409,'invoice_requires_review');
+    // An explicit retry may replace only a verified failed invoice. Claim it
+    // atomically across API/admin processes and preserve it for late settlement.
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const claimed = db.prepare(`UPDATE lava_invoices SET state='replacing'
+        WHERE order_id=? AND invoice_id=? AND state='ready' AND EXISTS
+        (SELECT 1 FROM billing_orders WHERE id=? AND status='pending'
+          AND target_expiry IS NULL AND lock_until<=?)`)
+        .run(order.id,row.invoice_id,order.id,Date.now()).changes;
+      if (!claimed) throw new ApiError(409,'invoice_requires_review');
+      db.prepare(`INSERT OR IGNORE INTO lava_previous_invoices
+        (invoice_id,order_id,email,amount,state) VALUES(?,?,?,?,'ready')`)
+        .run(row.invoice_id,order.id,row.email,row.amount);
+      db.exec('COMMIT');
+    } catch(e) { db.exec('ROLLBACK'); throw e; }
+    try {
+      const invoice = await api('/api/v3/invoice', {
+        email:row.email,offerId:row.offer_id,currency:'RUB',periodicity:'ONE_TIME',
+        buyerLanguage:'RU',paymentProvider:'PAY2ME',paymentMethod:'SBP',...returnUrls
+      });
+      const url = new URL(invoice.paymentUrl);
+      if (!uuid(invoice.id) || invoice.id === row.invoice_id || url.protocol !== 'https:' ||
+          url.username || url.password || invoice.amountTotal?.currency !== 'RUB' ||
+          invoice.amountTotal?.amount * 100 !== row.amount)
+        throw new ApiError(503,'lava_invoice_mismatch');
+      db.prepare(`UPDATE lava_invoices SET invoice_id=?,payment_url=?,state='ready',
+        payment_method='SBP',last_error=NULL,checked=0,received=0 WHERE order_id=?`)
+        .run(invoice.id,url.href,order.id);
+      return payment(billing.latest(account));
+    } catch(e) {
+      // A timeout might have created a real invoice; never POST again blindly.
+      db.prepare("UPDATE lava_invoices SET state='review',last_error=? WHERE order_id=?")
+        .run(e instanceof ApiError ? e.code:'lava_invalid_response',order.id);
+      throw e;
+    }
+  }
   function authenticate(value) {
     const provided=Buffer.from(typeof value === 'string' ? value:'');
     const expected=Buffer.from(secret);
@@ -161,5 +217,5 @@ export function createLava({ path, key, secret, billing, fetcher = fetch }) {
     }
     return result;
   }
-  return {checkout,payment,authenticate,receive,processPending,upgradeLegacy,close:()=>{if(db.isOpen)db.close();}};
+  return {checkout,resume,payment,authenticate,receive,processPending,upgradeLegacy,close:()=>{if(db.isOpen)db.close();}};
 }

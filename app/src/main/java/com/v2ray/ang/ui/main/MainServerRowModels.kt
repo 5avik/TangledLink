@@ -14,7 +14,9 @@ internal data class ServerRowUiModel(
     val typeDescription: String,
     val testDelayMillis: Long,
     val subscriptionBadge: String,
-)
+) {
+    val label: ServerLabel = serverLabel(remarks)
+}
 
 internal data class ServerGroupUiState(
     val servers: List<ServersCache> = emptyList(),

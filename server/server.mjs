@@ -68,7 +68,9 @@ return createServer(async (req, res) => {
       if (!billingStore) throw new ApiError(503, 'billing_unavailable');
       limit('orders:' + session.account, 10);
       const data = await json(req);
-      if (lavaStore) return reply(200, {order:await lavaStore.checkout(session.account, data.planId, data.email)});
+      if (lavaStore) return reply(200, {order: data.orderId !== undefined
+        ? await lavaStore.resume(session.account, data.orderId)
+        : await lavaStore.checkout(session.account, data.planId, data.email)});
       if (data.planId !== billingStore.plan.id) throw new ApiError(400, 'invalid_plan');
       return reply(200, { order: await billingStore.create(session.account) });
     }

@@ -28,34 +28,69 @@ internal fun PremiumShell(vm: MainViewModel, action: (MainAction)->Unit, navigat
     val loading by vm.isLoading.collectAsStateWithLifecycle()
     val billing by vm.billingState.collectAsStateWithLifecycle()
     val group by remember(state.selectedGroupId) { vm.serverGroupState(state.selectedGroupId) }.collectAsStateWithLifecycle()
+    val selected = group.rows.firstOrNull { it.guid == state.selectedGuid }
+    PremiumTheme {
+        if (billing.visible) BillingDialog(billing, action)
+        PremiumTabNavigation(billing.returnSequence) { route, selectTab, padding, bottomClearance ->
+            when (route) {
+                "home" -> HomeScreen(
+                    if(state.isRunning) ConnectionStatus.Connected else if(state.isConnecting) ConnectionStatus.Connecting else ConnectionStatus.Disconnected,
+                    selected, {action(MainAction.ToggleService)}, {selectTab("servers")}, {selectTab("more")},
+                    accountLogin=state.accountLogin, traffic=state.traffic, contentInsets=padding, bottomPadding=bottomClearance)
+                "servers" -> ServersScreen(group.rows, browserInput, browser, loading,
+                    {action(MainAction.SearchPremiumServers(it))}, {action(MainAction.FilterPremiumServers(it))},
+                    state.selectedGuid, prefs.favorites, {action(MainAction.SelectServer(it))},
+                    {action(MainAction.ToggleFavorite(it))}, {action(MainAction.TestAllServers)},
+                    {action(MainAction.UpdateSubscriptions)}, contentInsets=padding, bottomPadding=bottomClearance)
+                "subscription" -> SubscriptionScreen(
+                    state.groups.firstOrNull { it.id==state.selectedGroupId }?.usageInfo,
+                    prefs.months, {action(MainAction.SelectPremiumPlan(it))},
+                    onRenew={action(MainAction.BeginBilling(prefs.months))}, contentInsets=padding, bottomPadding=bottomClearance)
+                "more" -> MoreScreen(prefs, navigate, action, {selectTab("servers")},
+                    contentInsets=padding, bottomPadding=bottomClearance)
+            }
+        }
+    }
+}
+
+/** Shared by the bottom bar, screen shortcuts and billing returns. */
+@Composable
+internal fun PremiumTabNavigation(
+    billingReturnSequence: Long = 0,
+    content: @Composable (String, (String) -> Unit, PaddingValues, Dp) -> Unit,
+) {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route ?: "home"
-    val selected = group.rows.firstOrNull { it.guid == state.selectedGuid }
-    LaunchedEffect(billing.returnSequence) {
-        if (billing.returnSequence > 0) nav.navigate("subscription") {
-            popUpTo("home") { saveState = true }; launchSingleTop = true; restoreState = true
+    val tabs = remember { listOf("home", "servers", "subscription", "more") }
+    val selectTab: (String) -> Unit = remember(nav) {
+        { target ->
+            if (target in tabs && nav.currentDestination?.route != target) {
+                nav.navigate(target) {
+                    popUpTo("home") { saveState = true }
+                    launchSingleTop = true
+                    // A saved stack can be associated with its root. Restoring
+                    // "home" would then reopen the tab that was just popped.
+                    restoreState = target != "home"
+                }
+            }
         }
     }
-    PremiumTheme {
-        if (billing.visible) BillingDialog(billing, action)
-        FloatingNavigationLayout(route, { target ->
-            nav.navigate(target) { popUpTo("home") { saveState=true }; launchSingleTop=true; restoreState=true }
-        }) { padding, bottomClearance ->
-            Box(Modifier.fillMaxSize()) {
-                NavHost(nav, startDestination="home", modifier=Modifier.align(Alignment.TopCenter).widthIn(max=840.dp).fillMaxSize()) {
-                    composable("home") {
-                        HomeScreen(if(state.isRunning) ConnectionStatus.Connected else if(state.isConnecting) ConnectionStatus.Connecting else ConnectionStatus.Disconnected,
-                            selected, {action(MainAction.ToggleService)}, {nav.navigate("servers")}, {nav.navigate("more")}, accountLogin=state.accountLogin, traffic=state.traffic, contentInsets=padding, bottomPadding=bottomClearance)
-                    }
-                    composable("servers") { ServersScreen(group.rows, browserInput, browser, loading, { action(MainAction.SearchPremiumServers(it)) }, { action(MainAction.FilterPremiumServers(it)) }, state.selectedGuid, prefs.favorites,
-                        { action(MainAction.SelectServer(it)) }, {action(MainAction.ToggleFavorite(it))},
-                        {action(MainAction.TestAllServers)}, {action(MainAction.UpdateSubscriptions)}, contentInsets=padding, bottomPadding=bottomClearance) }
-                    composable("subscription") {
-                        SubscriptionScreen(state.groups.firstOrNull { it.id==state.selectedGroupId }?.usageInfo,
-                            prefs.months, {action(MainAction.SelectPremiumPlan(it))}, onRenew = {action(MainAction.BeginBilling(prefs.months))}, contentInsets=padding, bottomPadding=bottomClearance)
-                    }
-                    composable("more") { MoreScreen(prefs, navigate, action, {nav.navigate("servers")}, contentInsets=padding, bottomPadding=bottomClearance) }
+    // Recreating the activity must not replay an already handled payment return
+    // after the user has deliberately selected another tab.
+    var returnHandled by rememberSaveable(billingReturnSequence) { mutableStateOf(false) }
+    LaunchedEffect(billingReturnSequence) {
+        if (billingReturnSequence > 0 && !returnHandled) {
+            selectTab("subscription")
+            returnHandled = true
+        }
+    }
+    FloatingNavigationLayout(route, selectTab) { padding, bottomClearance ->
+        Box(Modifier.fillMaxSize()) {
+            NavHost(nav, startDestination="home",
+                modifier=Modifier.align(Alignment.TopCenter).widthIn(max=840.dp).fillMaxSize()) {
+                tabs.forEach { target ->
+                    composable(target) { content(target, selectTab, padding, bottomClearance) }
                 }
             }
         }

@@ -64,6 +64,16 @@ internal class BillingController(
         state.value.snapshot?.order?.paymentUrl
     } else null
 
+    fun pay() {
+        val value = state.value
+        if (!value.canPay) return
+        val snapshot = value.snapshot ?: return
+        val order = snapshot.order ?: return
+        // The backend rechecks this invoice and replaces only a verified failure.
+        // Never reopen a cached checkout URL after a failed payment.
+        run(openPayment = true) { snapshot.copy(order = gateway.resume(order.id)) }
+    }
+
     fun email(value: String) { if (!state.value.busy) state.update { it.copy(email = value.take(254), error = null) } }
     fun selectPlan(value: String) { if (!state.value.busy) state.update { it.copy(planId = value, error = null) } }
     fun refresh() = run { gateway.load() }

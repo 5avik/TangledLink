@@ -117,7 +117,6 @@ class MainViewModel(
     private var billingReturnPending = false
     val billingState = billing.uiState
     val billingPaymentEvents = billing.paymentEvents
-    fun billingPaymentUrl(): String? = billing.paymentUrl()
 
     // ---------- Keyword filtering ----------
     @Volatile
@@ -368,6 +367,7 @@ class MainViewModel(
             MainAction.DismissBilling -> billing.close()
             MainAction.CreateBillingOrder -> billing.create()
             MainAction.RefreshBilling -> billing.refresh()
+            MainAction.OpenBillingPayment -> billing.pay()
 
             MainAction.DismissUpdateDialog -> {
                 _uiState.update { it.copy(showTnglUpdateDialog = false) }
@@ -387,7 +387,6 @@ class MainViewModel(
             is MainAction.ShareClipboard,
             is MainAction.ShareFullContent,
             is MainAction.DownloadUpdate,
-            MainAction.OpenBillingPayment,
             is MainAction.OpenSubscriptionLink -> {
                 // Handled by Activity via its onAction lambda
             }

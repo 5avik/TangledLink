@@ -69,7 +69,7 @@ internal fun ConnectionButton(status: ConnectionStatus, enabled:Boolean=true, di
 
 internal val countryFlags = linkedMapOf("🇷🇺" to R.string.premium_ru,"🇩🇪" to R.string.premium_de,
     "🇳🇱" to R.string.premium_nl,"🇬🇧" to R.string.premium_uk,"🇺🇸" to R.string.premium_us,
-    "🇸🇬" to R.string.premium_sg,"🇫🇷" to R.string.premium_fr)
+    "🇸🇬" to R.string.premium_sg,"🇫🇷" to R.string.premium_fr,"🇷🇴" to R.string.premium_ro)
 @Composable
 internal fun ServerCard(row:ServerRowUiModel,selected:Boolean,favorite:Boolean,onSelect:()->Unit,onFavorite:(()->Unit)?,compact:Boolean=false) {
     val accent=MaterialTheme.colorScheme.primary
@@ -77,13 +77,31 @@ internal fun ServerCard(row:ServerRowUiModel,selected:Boolean,favorite:Boolean,o
         shape=RoundedCornerShape(22.dp),color=MaterialTheme.colorScheme.surface,
         border=BorderStroke(1.dp,if(selected)accent.copy(alpha=.65f)else MaterialTheme.colorScheme.outlineVariant)) {
         Row(Modifier.padding(start=18.dp,end=8.dp,top=if(compact)12.dp else 16.dp,bottom=if(compact)12.dp else 16.dp),verticalAlignment=Alignment.CenterVertically) {
-            val country=countryFlags.entries.firstOrNull { row.remarks.contains(it.key) }
-            if (country != null) Surface(shape=CircleShape,color=MaterialTheme.colorScheme.surfaceContainer,modifier=Modifier.padding(end=14.dp).size(40.dp)) {
-                Box(contentAlignment=Alignment.Center) { Text(country.key,fontSize=24.sp,modifier=Modifier.clearAndSetSemantics {}) }
+            val label = row.label
+            val country = countryFlags[label.countryFlag]
+            val title = when {
+                label.automatic -> stringResource(R.string.premium_auto_select)
+                country != null -> stringResource(country)
+                label.detail.isNotBlank() -> label.detail
+                else -> stringResource(R.string.premium_server)
+            }
+            val detail = when {
+                label.automatic -> stringResource(R.string.premium_auto_select_note)
+                country != null && label.detail.isNotBlank() -> label.detail
+                else -> stringResource(R.string.premium_location)
+            }
+            Surface(shape=CircleShape,color=MaterialTheme.colorScheme.surfaceContainer,
+                modifier=Modifier.padding(end=14.dp).size(40.dp).clearAndSetSemantics {}) {
+                Box(contentAlignment=Alignment.Center) {
+                    if (label.countryFlag != null) Text(label.countryFlag,fontSize=24.sp)
+                    else Icon(androidx.compose.ui.res.painterResource(
+                        if(label.automatic) R.drawable.ic_refresh_24dp else R.drawable.ic_premium_servers),
+                        contentDescription=null,modifier=Modifier.size(24.dp),tint=accent)
+                }
             }
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(if(compact)4.dp else 6.dp)) {
-                Text(country?.let { stringResource(it.value) } ?: row.remarks,style=MaterialTheme.typography.titleMedium)
-                if(country!=null) Text(row.remarks,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(title,style=MaterialTheme.typography.titleMedium)
+                Text(detail,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(if(row.testDelayMillis>0)stringResource(R.string.premium_ping,row.testDelayMillis)else stringResource(R.string.premium_unknown_ping),
                     style=MaterialTheme.typography.bodySmall,color=if(row.testDelayMillis>0)accent else MaterialTheme.colorScheme.onSurfaceVariant)
             }

@@ -25,8 +25,9 @@ internal fun filterPremiumServers(
     favorites: Set<String>,
     countryNames: Map<String, String>,
 ): List<ServerRowUiModel> = rows.filter { row ->
-    val country = countryNames.entries.firstOrNull { row.remarks.contains(it.key) }?.value.orEmpty()
-    (row.remarks.contains(input.query, true) || country.contains(input.query, true)) &&
+    val country = countryNames[row.label.countryFlag].orEmpty()
+    (row.remarks.contains(input.query, true) || row.label.detail.contains(input.query, true) ||
+        country.contains(input.query, true)) &&
         (input.filter != 1 || row.guid in favorites) &&
         (input.filter != 2 || row.testDelayMillis in 1..149)
 }

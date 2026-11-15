@@ -13,6 +13,13 @@ class BillingControllerTest {
     private class Fake(var value: BillingSnapshot) : BillingGateway {
         var failure: String? = null
         var created = 0
+        var resumed = 0
+        override fun resume(orderId: String): BillingOrder {
+            check(orderId == value.order?.id)
+            failure?.let { throw TnglAuthException(it) }
+            resumed++
+            return requireNotNull(value.order)
+        }
         override fun load(): BillingSnapshot {
             failure?.let { throw TnglAuthException(it) }
             return value
@@ -23,6 +30,37 @@ class BillingControllerTest {
             created++
             return requireNotNull(value.order)
         }
+    }
+    @Test fun payRechecksWithServerAndUsesOnlyItsFreshLink() {
+        val scope=CoroutineScope(SupervisorJob()+Dispatchers.Unconfined)
+        val fake=Fake(BillingSnapshot(plan,"",pending))
+        var paid=0
+        val controller=BillingController(scope,Dispatchers.Unconfined,fake){paid++}
+        val urls=mutableListOf<String>()
+        scope.launch {controller.paymentEvents.collect {urls.add(it)}}
+        try {
+            controller.pay()
+            assertEquals(0,fake.resumed)
+            controller.open()
+            fake.value=fake.value.copy(order=pending.copy(paymentUrl="https://pay.lava.top/fresh"))
+            controller.pay()
+            assertEquals(listOf("https://pay.lava.top/fresh"),urls)
+            assertEquals(1,fake.resumed);assertEquals(0,fake.created)
+            assertEquals("pending",controller.uiState.value.snapshot?.order?.status)
+            controller.refresh()
+            assertEquals(1,urls.size)
+            fake.failure="invoice_requires_review"
+            controller.pay()
+            assertEquals(R.string.billing_manual_review,controller.uiState.value.error)
+            assertEquals(1,urls.size);assertFalse(controller.uiState.value.busy)
+            fake.failure=null;controller.refresh()
+            fake.value=fake.value.copy(order=pending.copy(status="paid",paymentUrl=null))
+            controller.pay()
+            assertEquals(2,fake.resumed);assertEquals(1,paid)
+            assertEquals(1,urls.size)
+            controller.pay();assertEquals(2,fake.resumed)
+            controller.close();controller.pay();assertEquals(2,fake.resumed)
+        } finally {scope.cancel()}
     }
     @Test fun browserReturnOnlyLoadsServerStatusAndNeverCreatesPayment() {
         val scope=CoroutineScope(SupervisorJob()+Dispatchers.Unconfined)

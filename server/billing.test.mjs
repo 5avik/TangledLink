@@ -106,6 +106,31 @@ delete process.env.XUI_URL;delete process.env.XUI_API_TOKEN;delete process.env.B
 const {createApiServer}=await import('./server.mjs');
 const {createAdminServer}=await import('./admin-panel.mjs');
 
+test('payment retry API authenticates and passes only the session account',async()=>{
+ const auth=createAuth(':memory:');
+ const code=auth.invite('retry-user');await auth.activate('retry-user',code,'test-password-long');
+ const session=await auth.login('retry-user','test-password-long');
+ let calls=0;
+ const api=createApiServer({authStore:auth,billingStore:{plan:PLAN},lavaStore:{
+  resume:async(account,id)=>{
+   calls++;assert.equal(account,'retry-user');assert.equal(id,'TL-owned');
+   return {id,account,status:'pending',paymentUrl:'https://pay.lava.top/fresh'};
+  },
+  checkout:()=>assert.fail('Retry must not create an unrelated order')
+ }});
+ await new Promise(r=>api.listen(0,'127.0.0.1',r));
+ const root='http://127.0.0.1:'+api.address().port;
+ const body=JSON.stringify({orderId:'TL-owned',account:'victim',email:'other@example.com',planId:'month360'});
+ try{
+  assert.equal((await fetch(root+'/v1/billing/orders',{method:'POST',
+   headers:{'Content-Type':'application/json'},body})).status,401);
+  assert.equal(calls,0);
+  const response=await fetch(root+'/v1/billing/orders',{method:'POST',
+   headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.token},body});
+  assert.equal(response.status,200);assert.equal((await response.json()).order.account,'retry-user');
+  assert.equal(calls,1);
+ }finally{await new Promise(r=>api.close(r));auth.close();}
+});
 test('API binds orders to bearer account; only CSRF-authenticated admin confirms',async()=>{
   const auth=createAuth(':memory:');
   const code=auth.invite('svk');await auth.activate('svk',code,'test-password-long');

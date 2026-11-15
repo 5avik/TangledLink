@@ -91,8 +91,8 @@ android {
         applicationId = "pro.tngl"
         minSdk = 24
         targetSdk = 37
-        versionCode = 13
-        versionName = "0.9.4-test"
+        versionCode = 14
+        versionName = "0.9.5-test"
 
         val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(';')
         splits {
