@@ -406,12 +406,14 @@ object ThemeCatalog {
         effect = SceneEffect.Rain,
     )
 
-    val ordered: List<ThemeConfig> = listOf(Original, Sakura, Aurora, Cyberpunk)
+    val ordered: List<ThemeConfig> = listOf(Original, Sakura, Aurora, Cyberpunk,
+        com.v2ray.ang.ui.terminal.TerminalThemes.matrix_green.copy(previewRes = R.drawable.tngl_preview_terminal))
     operator fun get(id: ThemeId): ThemeConfig = when (id) {
         ThemeId.Original -> Original
         ThemeId.Sakura -> Sakura
         ThemeId.Aurora -> Aurora
         ThemeId.Cyberpunk -> Cyberpunk
+        ThemeId.Terminal -> com.v2ray.ang.ui.terminal.TerminalThemes.matrix_green
     }
 }
 

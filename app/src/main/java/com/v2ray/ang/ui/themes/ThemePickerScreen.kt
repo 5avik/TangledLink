@@ -25,7 +25,7 @@ import com.v2ray.ang.ui.main.ConnectionStatus
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ThemePickerScreen(state: ThemePickerState, action: (ThemePickerAction) -> Unit) {
-    val config = ThemeCatalog[state.draft.themeId]
+    val config = if(state.draft.themeId == ThemeId.Terminal) com.v2ray.ang.ui.terminal.TerminalThemes.config(state.draft.terminalPalette) else ThemeCatalog[state.draft.themeId]
     Scaffold(
         topBar = {
             TopAppBar(title = { Text(stringResource(R.string.themes_title), maxLines = 1,
@@ -73,6 +73,12 @@ internal fun ThemePickerScreen(state: ThemePickerState, action: (ThemePickerActi
                     action(ThemePickerAction.Preview(theme.id))
                 }
             }
+            if(state.draft.themeId == ThemeId.Terminal) items(com.v2ray.ang.ui.terminal.TerminalPaletteId.entries, key={it.stableId}) { palette ->
+                val paletteConfig = com.v2ray.ang.ui.terminal.TerminalThemes.config(palette)
+                ThemeChoice(paletteConfig.copy(nameRes = when(palette) { com.v2ray.ang.ui.terminal.TerminalPaletteId.MATRIX_GREEN->R.string.terminal_palette_matrix_green;com.v2ray.ang.ui.terminal.TerminalPaletteId.CATPPUCCIN_MOCHA->R.string.terminal_palette_catppuccin_mocha;com.v2ray.ang.ui.terminal.TerminalPaletteId.TOKYO_NIGHT->R.string.terminal_palette_tokyo_night;else->R.string.terminal_palette_gruvbox_dark }), state.draft.terminalPalette==palette, !state.saving, tag = "palette_"+palette.stableId) {
+                    action(ThemePickerAction.Palette(palette))
+                }
+            }
             item(key = "effects") {
                 Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
                     Row(Modifier.fillMaxWidth().toggleable(
@@ -93,7 +99,7 @@ internal fun ThemePickerScreen(state: ThemePickerState, action: (ThemePickerActi
 }
 
 @Composable
-private fun ThemeChoice(config: ThemeConfig, selected: Boolean, enabled: Boolean, choose: () -> Unit) {
+private fun ThemeChoice(config: ThemeConfig, selected: Boolean, enabled: Boolean, tag: String = "theme_"+config.id.storageId, choose: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(22.dp),
@@ -102,7 +108,7 @@ private fun ThemeChoice(config: ThemeConfig, selected: Boolean, enabled: Boolean
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            Modifier.fillMaxWidth().testTag("theme_" + config.id.storageId)
+            Modifier.fillMaxWidth().testTag(tag)
                 .selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = choose)
                 .semantics(mergeDescendants = true) {}.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -133,12 +139,13 @@ private fun ThemeLocalPreview(config: ThemeConfig, reduced: Boolean) {
     CompositionLocalProvider(LocalThemeConfig provides config, LocalReduceEffects provides reduced) {
         MaterialTheme(colorScheme = colors) {
             Box(Modifier.fillMaxWidth().heightIn(min = 310.dp).clip(RoundedCornerShape(26.dp))) {
-                ThemedBackground(Modifier.matchParentSize(), config, preview = true)
+                ThemedBackground(Modifier.matchParentSize(), config, preview = config.id != ThemeId.Terminal)
                 Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AsyncImage(R.drawable.tngl_brand_mark, null, Modifier.width(30.dp).aspectRatio(256f / 240f),
                         contentScale = ContentScale.Fit)
-                    ConnectionPortal(ConnectionStatus.Disconnected, diameter = 136.dp, interactive = false, onClick = {})
+                    if(config.id == ThemeId.Terminal) com.v2ray.ang.ui.terminal.AsciiPenguin(false,true,neutral=true)
+                    else ConnectionPortal(ConnectionStatus.Disconnected, diameter = 136.dp, interactive = false, onClick = {})
                     Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface) {
                         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(stringResource(R.string.theme_preview_card), style = MaterialTheme.typography.titleSmall)

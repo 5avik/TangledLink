@@ -82,6 +82,16 @@ class MainViewModel(
     private val dataSource: MainDataSource
 ) : BaseViewModel(application) {
 
+    internal val connectionGate = com.v2ray.ang.ui.terminal.ConnectionRequestGate()
+    internal val terminal by lazy { com.v2ray.ang.ui.terminal.TerminalCommandHandler(viewModelScope,
+        com.v2ray.ang.ui.compose.ThemeManager, {uiState.value},
+        {serverGroupState(uiState.value.selectedGroupId).value.rows},
+        {connectionGate.pending || uiState.value.isConnecting}, {dataSource.getString(it)},
+        android.os.Build.MODEL, com.v2ray.ang.BuildConfig.VERSION_NAME) }
+    fun connectionRequestFinished() {
+        connectionGate.finished()
+        _uiState.update { it.copy(isConnecting = false) }
+    }
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
     private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default
     private val preloadDispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1)
@@ -170,6 +180,7 @@ class MainViewModel(
             }
 
             is MainServiceEvent.StateStartFailure -> {
+                connectionRequestFinished()
                 if (!event.message.isNullOrBlank()) {
                     toastError(event.message)
                 } else {
@@ -178,7 +189,7 @@ class MainViewModel(
                 updateRunningState(false)
             }
 
-            MainServiceEvent.StateStopSuccess -> updateRunningState(false)
+            MainServiceEvent.StateStopSuccess -> { connectionRequestFinished(); updateRunningState(false) }
             is MainServiceEvent.MeasureDelayResult -> {
                 if (!uiState.value.isRunning || !testRequests.completeCurrent(event.requestId)) return
                 _uiState.update { it.copy(isTesting = testRequests.isTesting, status = MainStatus.ConnectionTest(event.result)) }
@@ -309,6 +320,11 @@ class MainViewModel(
     // ---------- Action handler ----------
     fun onAction(action: MainAction) {
         when (action) {
+            is MainAction.TerminalInput -> terminal.input(action.value)
+            is MainAction.TerminalHistory -> terminal.history(action.delta)
+            MainAction.TerminalComplete -> terminal.complete()
+            is MainAction.OpenTerminal -> terminal.open(action.page)
+            MainAction.TerminalSubmit -> Unit
             MainAction.Initialize -> initialize()
             MainAction.RefreshGroups -> setupGroupTab(forceRefresh = true)
             MainAction.TestAllServers -> testAllRealPing(true)
@@ -1212,6 +1228,7 @@ class MainViewModel(
         connectionTimeout = viewModelScope.launch {
             delay(30_000)
             if (uiState.value.isConnecting) {
+                // Timeout only ends the UI spinner; a native result still owns the request gate.
                 _uiState.update { it.copy(isConnecting = false) }
                 toastError(R.string.toast_services_failure)
             }
@@ -1219,6 +1236,8 @@ class MainViewModel(
     }
 
     private fun updateRunningState(running: Boolean, clearTestingText: Boolean = true) {
+        connectionGate.observed(running)
+        terminal.observe(running)
         connectionTimeout?.cancel()
         connectionTimeout = null
         if (!running || clearTestingText) testRequests.invalidateCurrent()

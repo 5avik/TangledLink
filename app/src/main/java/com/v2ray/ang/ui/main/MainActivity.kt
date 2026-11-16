@@ -62,7 +62,8 @@ class MainActivity : HelperBaseComponentActivity() {
 
     private val requestVpnPermission =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            if (it.resultCode == RESULT_OK) startV2Ray()
+            if (it.resultCode == RESULT_OK) { try { startV2Ray() } catch (_: Exception) { mainViewModel.connectionRequestFinished() } }
+            else mainViewModel.connectionRequestFinished()
         }
 
     private val profileEditorLauncher =
@@ -141,6 +142,7 @@ class MainActivity : HelperBaseComponentActivity() {
             mainViewModel = mainViewModel,
             onAction = { action ->
                 when (action) {
+                    MainAction.TerminalSubmit -> mainViewModel.terminal.execute(::dispatchTerminalAction)
                     MainAction.ToggleService -> handleFabAction()
                     MainAction.OpenSystemVpnSettings -> openSystemSettings(Intent(android.provider.Settings.ACTION_VPN_SETTINGS))
                     MainAction.OpenNotificationSettings -> openSystemSettings(
@@ -209,7 +211,19 @@ class MainActivity : HelperBaseComponentActivity() {
         catch (error: SecurityException) { toastError(R.string.toast_failure) }
     }
 
+    private fun dispatchTerminalAction(action: MainAction) {
+        when(action) {
+            MainAction.ToggleService -> handleFabAction()
+            is MainAction.SelectServer -> setSelectServer(action.guid)
+            MainAction.TestCurrentServer -> handleLayoutTestClick()
+            else -> mainViewModel.onAction(action)
+        }
+    }
     private fun handleFabAction() {
+        if (mainViewModel.uiState.value.isConnecting || !mainViewModel.connectionGate.acquire(mainViewModel.uiState.value.isRunning)) return
+        try { performConnectionAction() } catch (_: Exception) { mainViewModel.connectionRequestFinished() }
+    }
+    private fun performConnectionAction() {
         if (mainViewModel.uiState.value.isRunning) {
             LauncherManager.stopService(this)
         } else {
@@ -218,6 +232,7 @@ class MainActivity : HelperBaseComponentActivity() {
     }
 
     private fun requestServiceStart() {
+        if (!mainViewModel.connectionGate.pending && !mainViewModel.connectionGate.acquire(mainViewModel.uiState.value.isRunning)) return
         if (!SettingsManager.isVpnMode()) {
             startV2Ray()
             return
@@ -234,6 +249,7 @@ class MainActivity : HelperBaseComponentActivity() {
 
     private fun startV2Ray() {
         if (mainViewModel.uiState.value.selectedGuid.isNullOrEmpty()) {
+            mainViewModel.connectionRequestFinished()
             toast(R.string.title_file_chooser)
             return
         }
@@ -242,7 +258,7 @@ class MainActivity : HelperBaseComponentActivity() {
             checkAndRequestPermission(PermissionType.ACCESS_LOCAL_NETWORK) {}
         }
         mainViewModel.connectionStarting()
-        LauncherManager.startService(this)
+        if (!LauncherManager.startServiceFromToggle(this)) mainViewModel.connectionRequestFinished()
     }
 
     private fun importManually(createConfigType: Int) {

@@ -1,0 +1,23 @@
+<resources>
+<string name="terminal_snapshot">Current snapshot</string>
+<string name="terminal_transition">Service state changed</string>
+<string name="terminal_help_note">One command at a time; no shell access</string>
+<string name="terminal_history_up">Previous command</string>
+<string name="terminal_history_down">Next command</string>
+<string name="terminal_complete">Complete command</string>
+<string name="terminal_server_title">Selected server</string>
+<string name="terminal_stats_title">Traffic</string>
+<string name="terminal_back">Back</string>
+<string name="terminal_palette_matrix_green">Matrix Green</string>
+<string name="terminal_palette_catppuccin_mocha">Catppuccin Mocha</string>
+<string name="terminal_palette_tokyo_night">Tokyo Night</string>
+<string name="terminal_palette_gruvbox_dark">Gruvbox Dark</string>
+<string name="terminal_os">OS</string>
+<string name="terminal_device">Device</string>
+<string name="terminal_app">Application</string>
+<string name="terminal_service">Service</string>
+<string name="terminal_server_id">Server ID</string>
+<string name="terminal_protocol">Protocol</string>
+<string name="terminal_latency">Latency</string>
+<string name="terminal_uptime">Uptime</string>
+</resources>

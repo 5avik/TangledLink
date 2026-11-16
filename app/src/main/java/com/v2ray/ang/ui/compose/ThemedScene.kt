@@ -61,7 +61,8 @@ fun ThemedBackground(
             .build()
     }
     Box(modifier.background(config.scene.background).clearAndSetSemantics {}) {
-        AsyncImage(request, contentDescription = null, modifier = Modifier.fillMaxSize(),
+        if(config.id == ThemeId.Terminal && !preview) androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(config.backgroundRes),null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
+        else AsyncImage(request, contentDescription = null, modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop)
         if (effects && config.effect != SceneEffect.None) SceneDecoration(config)
         Canvas(Modifier.matchParentSize()) {

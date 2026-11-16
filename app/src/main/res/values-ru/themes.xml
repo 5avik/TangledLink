@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="themes_title">Темы оформления</string>
-    <string name="themes_note">Четыре мира, один TangledLink</string>
+    <string name="themes_note">Миры TangledLink</string>
     <string name="theme_original_name">Tangled Original</string>
     <string name="theme_sakura_name">Sakura</string>
     <string name="theme_aurora_name">Aurora</string>

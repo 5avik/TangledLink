@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terminal_theme_name">Terminal (Linux)</string>
+    <string name="terminal_theme_description">Linux terminal, ASCII and live VPN state</string>
+    <string name="terminal_palette_title">Terminal palette</string>
+    <string name="terminal_console_title">Console</string>
+    <string name="terminal_neofetch_title">System information</string>
+    <string name="terminal_logs_title">Connection events</string>
+    <string name="terminal_command_hint">Enter a command</string>
+    <string name="terminal_run_command">Run command</string>
+    <string name="terminal_no_data">No data</string>
+    <string name="terminal_connect">Connect VPN</string>
+    <string name="terminal_disconnect">Disconnect VPN</string>
+    <string name="terminal_connected">VPN service is running</string>
+    <string name="terminal_disconnected">VPN service is stopped</string>
+    <string name="terminal_busy">A request is pending. Wait for its result.</string>
+    <string name="terminal_already_running">VPN is already running</string>
+    <string name="terminal_already_stopped">VPN is already stopped</string>
+    <string name="terminal_server_missing">The server is no longer available</string>
+    <string name="terminal_input_too_long">Command is too long</string>
+    <string name="terminal_input_unsupported_syntax">Use one command without shell operators</string>
+    <string name="terminal_input_unknown_command">Unknown command. Use help.</string>
+    <string name="terminal_input_invalid_arguments">Invalid arguments. Use help.</string>
+    <string name="terminal_input_unknown_palette">Unknown palette. Use theme list.</string>
+    <string name="terminal_clear_output">Clear console</string>
+    <string name="terminal_copy_diagnostics">Copy safe diagnostics</string>
+    <string name="terminal_reduce_effects">Reduce terminal effects</string>
+    <string name="terminal_freedom">Freedom is already installed. Powered by TangledLink.</string>
+    <string name="terminal_unavailable">This data is not available in the app</string>
+</resources>

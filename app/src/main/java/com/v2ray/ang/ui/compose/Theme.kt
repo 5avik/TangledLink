@@ -45,10 +45,12 @@ val toastIconCircleBg = Color(0x33FFFFFF)
 val toastTextColor = Color.White
 
 object ThemeManager : AppearanceStore {
+    private const val PALETTE_KEY = "pref_tngl_terminal_palette"
     private const val WORLD_KEY = "pref_tngl_theme_id"
     private const val REDUCE_EFFECTS_KEY = "pref_tngl_reduce_effects"
 
     private fun readAppearance() = AppearanceSelection(
+        terminalPalette = com.v2ray.ang.ui.terminal.TerminalPaletteId.restore(runCatching { MmkvManager.decodeSettingsString(PALETTE_KEY) }.getOrNull()),
         themeId = ThemeId.fromStorage(runCatching { MmkvManager.decodeSettingsString(WORLD_KEY) }.getOrNull()),
         reduceEffects = runCatching { MmkvManager.decodeSettingsBool(REDUCE_EFFECTS_KEY, false) }.getOrDefault(false),
     )
@@ -60,14 +62,20 @@ object ThemeManager : AppearanceStore {
     override fun saveAppearance(selection: AppearanceSelection): Boolean {
         val previous = _appearance.value
         return try {
-            if (!MmkvManager.encodeSettings(REDUCE_EFFECTS_KEY, selection.reduceEffects)) return false
+            if (!MmkvManager.encodeSettings(PALETTE_KEY, selection.terminalPalette.stableId)) return false
+            if (!MmkvManager.encodeSettings(REDUCE_EFFECTS_KEY, selection.reduceEffects)) {
+                MmkvManager.encodeSettings(PALETTE_KEY, previous.terminalPalette.stableId)
+                return false
+            }
             if (!MmkvManager.encodeSettings(WORLD_KEY, selection.themeId.storageId)) {
+                MmkvManager.encodeSettings(PALETTE_KEY, previous.terminalPalette.stableId)
                 MmkvManager.encodeSettings(REDUCE_EFFECTS_KEY, previous.reduceEffects)
                 return false
             }
             _appearance.value = selection
             true
         } catch (_: Exception) {
+            runCatching { MmkvManager.encodeSettings(PALETTE_KEY, previous.terminalPalette.stableId) }
             runCatching { MmkvManager.encodeSettings(REDUCE_EFFECTS_KEY, previous.reduceEffects) }
             false
         }
@@ -122,7 +130,7 @@ fun AppTheme(
     val dynamicColor by ThemeManager.dynamicColorEnabled.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val appearance by ThemeManager.appearance.collectAsStateWithLifecycle()
-    val config = ThemeCatalog[appearance.themeId]
+    val config = if (appearance.themeId == ThemeId.Terminal) com.v2ray.ang.ui.terminal.TerminalThemes.config(appearance.terminalPalette) else ThemeCatalog[appearance.themeId]
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)

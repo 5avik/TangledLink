@@ -1,0 +1,23 @@
+<resources>
+<string name="terminal_snapshot">Текущий снимок</string>
+<string name="terminal_transition">Изменение состояния сервиса</string>
+<string name="terminal_help_note">Одна команда за раз; без доступа к shell</string>
+<string name="terminal_history_up">Предыдущая команда</string>
+<string name="terminal_history_down">Следующая команда</string>
+<string name="terminal_complete">Дополнить команду</string>
+<string name="terminal_server_title">Выбранный сервер</string>
+<string name="terminal_stats_title">Трафик</string>
+<string name="terminal_back">Назад</string>
+<string name="terminal_palette_matrix_green">Matrix Green</string>
+<string name="terminal_palette_catppuccin_mocha">Catppuccin Mocha</string>
+<string name="terminal_palette_tokyo_night">Tokyo Night</string>
+<string name="terminal_palette_gruvbox_dark">Gruvbox Dark</string>
+<string name="terminal_os">ОС</string>
+<string name="terminal_device">Устройство</string>
+<string name="terminal_app">Приложение</string>
+<string name="terminal_service">Сервис</string>
+<string name="terminal_server_id">ID сервера</string>
+<string name="terminal_protocol">Протокол</string>
+<string name="terminal_latency">Задержка</string>
+<string name="terminal_uptime">Время работы</string>
+</resources>

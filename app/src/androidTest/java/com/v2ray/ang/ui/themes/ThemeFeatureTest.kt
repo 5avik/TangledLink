@@ -105,9 +105,9 @@ class ThemeFeatureTest {
                 compose.onNodeWithContentDescription(label(R.string.premium_settings)).performScrollTo().performClick()
             }
         compose.runOnIdle {
-            assertEquals(32, connects)
-            assertEquals(32, serverClicks)
-            assertEquals(32, settingsClicks)
+            assertEquals(ThemeId.entries.size * 8, connects)
+            assertEquals(ThemeId.entries.size * 8, serverClicks)
+            assertEquals(ThemeId.entries.size * 8, settingsClicks)
         }
     }
 
@@ -135,7 +135,8 @@ class ThemeFeatureTest {
                     ThemePickerScreen(state, controller::onAction)
                 }
             }
-            for (id in listOf(ThemeId.Sakura, ThemeId.Aurora, ThemeId.Cyberpunk)) {
+            for (id in listOf(ThemeId.Sakura, ThemeId.Aurora, ThemeId.Cyberpunk, ThemeId.Terminal)) {
+                compose.onNodeWithTag("theme_list").performScrollToNode(hasTestTag("theme_" + id.storageId))
                 val target = compose.onNodeWithTag("theme_" + id.storageId)
                 target.performScrollTo()
                 compose.runOnIdle { input!!.requestInputMode(InputMode.Keyboard) }
@@ -146,6 +147,14 @@ class ThemeFeatureTest {
                 assertEquals(0, writes)
                 assertEquals(ThemeId.Original, stored.value.themeId)
             }
+            compose.onNodeWithTag("theme_list").performScrollToNode(hasTestTag("palette_tokyo_night"))
+            val palette = compose.onNodeWithTag("palette_tokyo_night")
+            palette.performScrollTo()
+            palette.performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+            palette.assertIsFocused()
+            palette.performKeyInput { pressKey(Key.DirectionCenter) }
+            palette.assertIsSelected()
+            assertEquals(0, writes)
             compose.onNodeWithTag("theme_apply").performClick()
             compose.onNodeWithText(label(R.string.theme_save_error)).assertIsDisplayed()
             assertFalse(controller.state.value.applied)
@@ -153,7 +162,8 @@ class ThemeFeatureTest {
             compose.onNodeWithTag("theme_apply").performClick()
             compose.runOnIdle {
                 assertTrue(controller.state.value.applied)
-                assertEquals(ThemeId.Cyberpunk, stored.value.themeId)
+                assertEquals(ThemeId.Terminal, stored.value.themeId)
+                assertEquals(com.v2ray.ang.ui.terminal.TerminalPaletteId.TOKYO_NIGHT, stored.value.terminalPalette)
                 assertEquals(2, writes)
             }
         } finally { scope.cancel() }
@@ -167,9 +177,15 @@ class ThemeFeatureTest {
             android.content.Intent(context, ThemePickerActivity::class.java),
         )
         try {
-            compose.onNodeWithTag("theme_sakura").performScrollTo().performClick().assertIsSelected()
+            compose.onNodeWithTag("theme_list").performScrollToNode(hasTestTag("theme_terminal"))
+            compose.onNodeWithTag("theme_terminal").performScrollTo().performClick().assertIsSelected()
+            compose.onNodeWithTag("theme_list").performScrollToNode(hasTestTag("palette_gruvbox_dark"))
+            compose.onNodeWithTag("palette_gruvbox_dark").performScrollTo().performClick().assertIsSelected()
             scenario.recreate()
-            compose.onNodeWithTag("theme_sakura").performScrollTo().assertIsSelected()
+            compose.onNodeWithTag("theme_list").performScrollToNode(hasTestTag("theme_terminal"))
+            compose.onNodeWithTag("theme_terminal").performScrollTo().assertIsSelected()
+            compose.onNodeWithTag("theme_list").performScrollToNode(hasTestTag("palette_gruvbox_dark"))
+            compose.onNodeWithTag("palette_gruvbox_dark").performScrollTo().assertIsSelected()
             assertEquals(ThemeId.Original, ThemeManager.appearance.value.themeId)
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
             compose.waitUntil(5000) { scenario.state == androidx.lifecycle.Lifecycle.State.DESTROYED }

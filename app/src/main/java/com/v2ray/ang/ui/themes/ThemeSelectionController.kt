@@ -18,6 +18,7 @@ data class ThemePickerState(
 sealed interface ThemePickerAction {
     data class Preview(val id: ThemeId) : ThemePickerAction
     data class ReduceEffects(val enabled: Boolean) : ThemePickerAction
+    data class Palette(val id: com.v2ray.ang.ui.terminal.TerminalPaletteId) : ThemePickerAction
     data object Apply : ThemePickerAction
     data object Cancel : ThemePickerAction
 }
@@ -34,6 +35,7 @@ class ThemeSelectionController(
         themeId = if (savedState.contains("theme_draft_id"))
             ThemeId.fromStorage(savedState["theme_draft_id"]) else initial.themeId,
         reduceEffects = savedState["theme_draft_reduce"] ?: initial.reduceEffects,
+        terminalPalette = if(savedState.contains("terminal_draft")) com.v2ray.ang.ui.terminal.TerminalPaletteId.restore(savedState["terminal_draft"]) else initial.terminalPalette,
     )))
     val state: StateFlow<ThemePickerState> = _state.asStateFlow()
 
@@ -41,6 +43,7 @@ class ThemeSelectionController(
         val current = _state.value
         if (current.saving || current.applied || current.cancelled) return
         when (action) {
+            is ThemePickerAction.Palette -> updateDraft(current.draft.copy(terminalPalette = action.id))
             is ThemePickerAction.Preview -> updateDraft(current.draft.copy(themeId = action.id))
             is ThemePickerAction.ReduceEffects -> updateDraft(current.draft.copy(reduceEffects = action.enabled))
             ThemePickerAction.Cancel -> {
@@ -65,12 +68,14 @@ class ThemeSelectionController(
     }
 
     private fun updateDraft(draft: AppearanceSelection) {
+        savedState["terminal_draft"] = draft.terminalPalette.stableId
         savedState["theme_draft_id"] = draft.themeId.storageId
         savedState["theme_draft_reduce"] = draft.reduceEffects
         _state.value = ThemePickerState(draft)
     }
 
     private fun clearDraft() {
+        savedState.remove<String>("terminal_draft")
         savedState.remove<String>("theme_draft_id")
         savedState.remove<Boolean>("theme_draft_reduce")
     }

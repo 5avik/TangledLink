@@ -47,6 +47,11 @@ data class MainUiState(
  * All possible user interaction intents
  */
 sealed interface MainAction {
+    data object TerminalSubmit : MainAction
+    data class TerminalInput(val value:String):MainAction
+    data class TerminalHistory(val delta:Int):MainAction
+    data object TerminalComplete:MainAction
+    data class OpenTerminal(val page:String):MainAction
     data class ToggleFavorite(val guid: String) : MainAction
     data class SelectPremiumPlan(val months: Int) : MainAction
     data class SetConnectOnLaunch(val enabled: Boolean) : MainAction

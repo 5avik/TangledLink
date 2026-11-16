@@ -29,6 +29,7 @@ class ThemePickerLayoutTest {
                                 draft = state.value.draft.copy(themeId = action.id))
                             is ThemePickerAction.ReduceEffects -> state.value = state.value.copy(
                                 draft = state.value.draft.copy(reduceEffects = action.enabled))
+                            is ThemePickerAction.Palette -> state.value=state.value.copy(draft=state.value.draft.copy(terminalPalette=action.id))
                             ThemePickerAction.Apply -> applies++
                             ThemePickerAction.Cancel -> Unit
                         }

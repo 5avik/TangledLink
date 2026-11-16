@@ -23,6 +23,7 @@ import java.util.Locale
 @Composable
 internal fun PremiumShell(vm: MainViewModel, action: (MainAction)->Unit, navigate: (MainDestination)->Unit) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val terminalState by vm.terminal.state.collectAsStateWithLifecycle()
     val prefs by vm.premiumState.collectAsStateWithLifecycle()
     val browser by vm.premiumBrowserState.collectAsStateWithLifecycle()
     val browserInput by vm.premiumBrowserInput.collectAsStateWithLifecycle()
@@ -33,8 +34,13 @@ internal fun PremiumShell(vm: MainViewModel, action: (MainAction)->Unit, navigat
     PremiumTheme {
         if (billing.visible) BillingDialog(billing, action)
         PremiumTabNavigation(billing.returnSequence) { route, selectTab, padding, bottomClearance ->
+            LaunchedEffect(route) { if(route!="terminal") action(MainAction.OpenTerminal("closed")) }
             when (route) {
-                "home" -> HomeScreen(
+                "terminal" -> com.v2ray.ang.ui.terminal.TerminalToolsScreen(terminalState, vm.terminal, action, {selectTab("home")}, padding, bottomClearance)
+                "home" -> if(LocalThemeConfig.current.id == com.v2ray.ang.ui.compose.ThemeId.Terminal)
+                    com.v2ray.ang.ui.terminal.TerminalHome(state, selected, action, {selectTab("servers")}, {selectTab("more")},
+                        {page->action(MainAction.OpenTerminal(page));selectTab("terminal")},padding,bottomClearance)
+                else HomeScreen(
                     if(state.isRunning) ConnectionStatus.Connected else if(state.isConnecting) ConnectionStatus.Connecting else ConnectionStatus.Disconnected,
                     selected, {action(MainAction.ToggleService)}, {selectTab("servers")}, {selectTab("more")},
                     accountLogin=state.accountLogin, traffic=state.traffic, contentInsets=padding, bottomPadding=bottomClearance)
@@ -72,6 +78,7 @@ internal fun PremiumTabNavigation(
             if (nav.currentDestination?.route == "account" && target in tabs) {
                 nav.popBackStack("more", inclusive=false)
             }
+            if (target == "terminal") { nav.navigate("terminal") { launchSingleTop=true } }
             if (target == "account" && nav.currentDestination?.route == "more") {
                 nav.navigate("account") {launchSingleTop=true}
             } else if (target in tabs && nav.currentDestination?.route != target) {
@@ -94,12 +101,12 @@ internal fun PremiumTabNavigation(
             returnHandled = true
         }
     }
-    androidx.activity.compose.BackHandler(enabled=route=="account") {selectTab("more")}
-    FloatingNavigationLayout(if(route=="account") "more" else route, selectTab) { padding, bottomClearance ->
+    androidx.activity.compose.BackHandler(enabled=route=="account" || route=="terminal") {selectTab(if(route=="terminal") "home" else "more")}
+    FloatingNavigationLayout(if(route=="account") "more" else if(route=="terminal") "home" else route, selectTab) { padding, bottomClearance ->
         Box(Modifier.fillMaxSize()) {
             NavHost(nav, startDestination="home",
                 modifier=Modifier.align(Alignment.TopCenter).widthIn(max=840.dp).fillMaxSize()) {
-                (tabs + "account").forEach { target ->
+                (tabs + listOf("account","terminal")).forEach { target ->
                     composable(target) { content(target, selectTab, padding, bottomClearance) }
                 }
             }
