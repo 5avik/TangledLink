@@ -640,4 +640,10 @@
     <string name="billing_manual_note">Переход на страницу оплаты не подтверждает платёж. Администратор проверит поступление и продлит подписку. После оплаты нажмите «Проверить статус».</string>
     <string name="billing_unavailable">Продление ещё не настроено. Обратитесь к администратору.</string>
     <string name="billing_manual_review">Перед продлением этой подписки нужна проверка администратором.</string>
+    <string name="billing_promo">Промокод (необязательно)</string>
+    <string name="billing_promo_note">Скидку рассчитает Lava. Проверьте итоговую сумму на странице оплаты.</string>
+    <string name="billing_invalid_promo">Промокод неверный или недоступен. Проверьте условия.</string>
+    <string name="billing_promo_locked">Счёт уже создан. Промокод в нём изменить нельзя.</string>
+    <string name="billing_total">Итого: %1$s ₽</string>
+    <string name="billing_promo_value">Промокод: %1$s</string>
 </resources>

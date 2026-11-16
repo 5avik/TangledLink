@@ -16,7 +16,7 @@ https://docs.github.com/en/rest/releases/releases#get-the-latest-release
 5. Attach the corresponding APK and identify the commit and signing certificate.
 
 Branch pushes only build, test and upload debug APKs as Actions artifacts.
-The v0.9.4-test tag also runs CI. Public releases are created explicitly after
+Tags matching v*-test also run CI. Public releases are created explicitly after
 both Android and backend jobs succeed, using --prerelease and --latest=false.
 CI debug artifacts are QA-only: their signing key is ephemeral and does not match
 published App Links. They are not automatically attached to public releases.

@@ -6,14 +6,12 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -27,89 +25,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-private val LightColor = lightColorScheme(
-    primary = Color(0xFF006C4C),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFDCFCE7),
-    onPrimaryContainer = Color(0xFF00210B),
-    secondary = Color(0xFF416775),
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFE0F7FA),
-    onSecondaryContainer = Color(0xFF001F24),
-    tertiary = Color(0xFF52648C),
-    onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFDCFCE7),
-    onTertiaryContainer = Color(0xFF00210B),
-    error = Color(0xFFBA1A1A),
-    errorContainer = Color(0xFFFFDAD6),
-    onError = Color(0xFFFFFFFF),
-    onErrorContainer = Color(0xFF410002),
-    background = Color(0xFFF8FAF9),
-    onBackground = Color(0xFF121413),
-    surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF121413),
-    surfaceVariant = Color(0xFFEFF6F1),
-    onSurfaceVariant = Color(0xFF404A44),
-    outline = Color(0xFF707A74),
-    outlineVariant = Color(0xFFC0CAC4),
-    inverseSurface = Color(0xFF2C312E),
-    inverseOnSurface = Color(0xFFF0F4F2),
-    inversePrimary = Color(0xFF00FF66),
-    scrim = Color(0xFF000000),
-    surfaceTint = Color(0xFF006C4C),
-    surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFF2F6F4),
-    surfaceContainer = Color(0xFFECEFEA),
-    surfaceContainerHigh = Color(0xFFE6EAE5),
-    surfaceContainerHighest = Color(0xFFE0E4DF),
-)
-
-private val DarkColor = darkColorScheme(
-    primary = Color(0xFF7CFC8A),
-    onPrimary = Color(0xFF04140C), // Dark Obsidian
-    primaryContainer = Color(0xFF122A1C), // Deep Dark Green
-    onPrimaryContainer = Color(0xFFC9F7D0), // Soft Mint Green
-    secondary = Color(0xFF48F0A9),
-    onSecondary = Color(0xFF04140C),
-    secondaryContainer = Color(0xFF103428),
-    onSecondaryContainer = Color(0xFFB7F6DC),
-    tertiary = Color(0xFF21D4A4),
-    onTertiary = Color(0xFF04140C),
-    tertiaryContainer = Color(0xFF122A1C),
-    onTertiaryContainer = Color(0xFFC9F7D0),
-    error = Color(0xFFFF5252),
-    errorContainer = Color(0xFF5C000B),
-    onError = Color(0xFFFFFFFF),
-    onErrorContainer = Color(0xFFFFDAD6),
-    background = Color(0xFF050806), // Dark Obsidian
-    onBackground = Color(0xFFEFF6F1),
-    surface = Color(0xFF0B1210), // Dark Card Surface
-    onSurface = Color(0xFFEFF6F1),
-    surfaceVariant = Color(0xFF0F1915),
-    onSurfaceVariant = Color(0xFF95A89E),
-    outline = Color(0xFF304238),
-    outlineVariant = Color(0xFF203128),
-    inverseSurface = Color(0xFFEFF6F1),
-    inverseOnSurface = Color(0xFF050806),
-    inversePrimary = Color(0xFF00CC52),
-    scrim = Color(0xFF000000),
-    surfaceTint = Color(0xFF7CFC8A),
-    surfaceContainerLowest = Color(0xFF050806),
-    surfaceContainerLow = Color(0xFF070C09),
-    surfaceContainer = Color(0xFF0B1210),
-    surfaceContainerHigh = Color(0xFF122019),
-    surfaceContainerHighest = Color(0xFF1B2C23),
-)
-
-// Semantic Colors
-val colorPing = Color(0xFF00FF66) // Neon Green
-val colorPingRed = Color(0xFFFF3366) // Pink Red
-val colorConfigType = Color(0xFF00E5FF) // Neon Cyan
-val colorFabActive = Color(0xFF00FF66) // Neon Green Active
-val colorFabInactiveLight = Color(0xFF9C9C9C)
-val colorFabInactiveDark = Color(0xFF646464)
-val dividerColorLight = Color(0xFFE0E0E0)
-val dividerColorDark = Color(0xFF304238)
+// Legacy accent consumers now resolve the active Material palette.
+val colorPing: Color @Composable get() = MaterialTheme.colorScheme.primary
+val colorPingRed: Color @Composable get() = MaterialTheme.colorScheme.error
+val colorConfigType: Color @Composable get() = MaterialTheme.colorScheme.secondary
+val colorFabActive: Color @Composable get() = MaterialTheme.colorScheme.primary
+val colorFabInactiveLight: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+val colorFabInactiveDark: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+val dividerColorLight: Color @Composable get() = MaterialTheme.colorScheme.outlineVariant
+val dividerColorDark: Color @Composable get() = MaterialTheme.colorScheme.outlineVariant
 
 // Toast Colors
 val toastNormalBgLight = Color(0xD9353A3E)
@@ -120,7 +44,35 @@ val toastInfoBg = Color(0xD90088CC)
 val toastIconCircleBg = Color(0x33FFFFFF)
 val toastTextColor = Color.White
 
-object ThemeManager {
+object ThemeManager : AppearanceStore {
+    private const val WORLD_KEY = "pref_tngl_theme_id"
+    private const val REDUCE_EFFECTS_KEY = "pref_tngl_reduce_effects"
+
+    private fun readAppearance() = AppearanceSelection(
+        themeId = ThemeId.fromStorage(runCatching { MmkvManager.decodeSettingsString(WORLD_KEY) }.getOrNull()),
+        reduceEffects = runCatching { MmkvManager.decodeSettingsBool(REDUCE_EFFECTS_KEY, false) }.getOrDefault(false),
+    )
+    private val _appearance = MutableStateFlow(readAppearance())
+    override val appearance: StateFlow<AppearanceSelection> = _appearance.asStateFlow()
+
+    /** Publish only after MMKV confirms both writes. ID is written exactly once on success. */
+    @Synchronized
+    override fun saveAppearance(selection: AppearanceSelection): Boolean {
+        val previous = _appearance.value
+        return try {
+            if (!MmkvManager.encodeSettings(REDUCE_EFFECTS_KEY, selection.reduceEffects)) return false
+            if (!MmkvManager.encodeSettings(WORLD_KEY, selection.themeId.storageId)) {
+                MmkvManager.encodeSettings(REDUCE_EFFECTS_KEY, previous.reduceEffects)
+                return false
+            }
+            _appearance.value = selection
+            true
+        } catch (_: Exception) {
+            runCatching { MmkvManager.encodeSettings(REDUCE_EFFECTS_KEY, previous.reduceEffects) }
+            false
+        }
+    }
+
     private val _themeMode = MutableStateFlow(
         MmkvManager.decodeSettingsString(AppConfig.PREF_UI_MODE_NIGHT, "0") ?: "0"
     )
@@ -142,6 +94,7 @@ object ThemeManager {
     }
 
     fun refresh() {
+        _appearance.value = readAppearance()
         _themeMode.value =
             MmkvManager.decodeSettingsString(AppConfig.PREF_UI_MODE_NIGHT, "0") ?: "0"
         _dynamicColorEnabled.value =
@@ -151,7 +104,7 @@ object ThemeManager {
 
 @Composable
 fun resolveDarkTheme(): Boolean {
-    val mode by ThemeManager.themeMode.collectAsState()
+    val mode by ThemeManager.themeMode.collectAsStateWithLifecycle()
     return when (mode) {
         "1" -> false
         "2" -> true
@@ -166,15 +119,17 @@ fun AppTheme(
     darkTheme: Boolean = resolveDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val dynamicColor by ThemeManager.dynamicColorEnabled.collectAsState()
+    val dynamicColor by ThemeManager.dynamicColorEnabled.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val appearance by ThemeManager.appearance.collectAsStateWithLifecycle()
+    val config = ThemeCatalog[appearance.themeId]
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
-        darkTheme -> DarkColor
-        else -> LightColor
+        darkTheme -> config.dark
+        else -> config.light
     }
     val snackbarController = rememberAppSnackbarController()
 
@@ -192,6 +147,8 @@ fun AppTheme(
 
     CompositionLocalProvider(
         LocalDarkTheme provides darkTheme,
+        LocalThemeConfig provides config,
+        LocalReduceEffects provides appearance.reduceEffects,
         LocalAppSnackbar provides snackbarController
     ) {
         MaterialTheme(

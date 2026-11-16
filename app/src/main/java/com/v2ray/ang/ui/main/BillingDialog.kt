@@ -33,11 +33,25 @@ internal fun BillingDialog(state: BillingUiState, onAction: (MainAction) -> Unit
                                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Email))
                         Text(stringResource(R.string.billing_email_note), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        OutlinedTextField(value = state.promoCode,
+                            onValueChange = { onAction(MainAction.BillingPromoCode(it)) },
+                            enabled = !state.busy, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.billing_promo)) },
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters,
+                                autoCorrectEnabled = false))
+                        Text(stringResource(R.string.billing_promo_note), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                         BrandButton(onClick = { onAction(MainAction.CreateBillingOrder) },
                             enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(R.string.billing_pay))
                         }
                     } else {
+                        order?.amountKopecks?.let {
+                            Text(stringResource(R.string.billing_total,
+                                java.math.BigDecimal.valueOf(it.toLong(), 2).toPlainString()))
+                        }
+                        order?.promoCode?.let { Text(stringResource(R.string.billing_promo_value, it)) }
                         Text(stringResource(when {
                             order?.status == "paid" && order.pendingSync -> R.string.billing_syncing
                             order?.status == "paid" -> R.string.billing_paid

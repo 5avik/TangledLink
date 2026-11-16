@@ -18,6 +18,11 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.v2ray.ang.ui.compose.LocalDarkTheme
+import com.v2ray.ang.ui.compose.LocalThemeConfig
+import com.v2ray.ang.ui.compose.ThemedBackground
 
 /** The bar overlays the scrollable viewport; screens reserve its measured height at list end. */
 @OptIn(ExperimentalFoundationApi::class)
@@ -44,27 +49,43 @@ internal fun FloatingNavigationLayout(
             }
         }
     }
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-    ) { insets ->
-        Box(Modifier.fillMaxSize().consumeWindowInsets(insets).imePadding()) {
-            CompositionLocalProvider(LocalBringIntoViewSpec provides focusScrolling) {
-                content(insets, clearance)
+    val sceneVisible = selected == "home"
+    val view = LocalView.current
+    val dark = LocalDarkTheme.current
+    val config = LocalThemeConfig.current
+    // The scene beneath system bars stays dark even when Material cards use the light palette.
+    SideEffect {
+        (view.context as? android.app.Activity)?.window?.let { window ->
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !sceneVisible && !dark
+                isAppearanceLightNavigationBars = !sceneVisible && !dark
             }
-            Box(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                    .height(clearance)
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, MaterialTheme.colorScheme.background.copy(alpha = .9f)))),
-            )
-            Box(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                    .padding(start=insets.calculateStartPadding(direction),end=insets.calculateEndPadding(direction))
-                    .onSizeChanged { barHeightPx = it.height }
-                    .testTag("floating_navigation"),
-                contentAlignment = Alignment.Center,
-            ) {
-                BottomNavigationBar(selected, onSelect)
+        }
+    }
+    Box(Modifier.fillMaxSize()) {
+        if (sceneVisible) ThemedBackground(Modifier.fillMaxSize(), config)
+        Scaffold(
+            containerColor = if (sceneVisible) Color.Transparent else MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+        ) { insets ->
+            Box(Modifier.fillMaxSize().consumeWindowInsets(insets).imePadding()) {
+                CompositionLocalProvider(LocalBringIntoViewSpec provides focusScrolling) {
+                    content(insets, clearance)
+                }
+                Box(
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                        .height(clearance)
+                        .background(Brush.verticalGradient(listOf(Color.Transparent, (if (sceneVisible) config.scene.background else MaterialTheme.colorScheme.background).copy(alpha = .9f)))),
+                )
+                Box(
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                        .padding(start=insets.calculateStartPadding(direction),end=insets.calculateEndPadding(direction))
+                        .onSizeChanged { barHeightPx = it.height }
+                        .testTag("floating_navigation"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    BottomNavigationBar(selected, onSelect)
+                }
             }
         }
     }

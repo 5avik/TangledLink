@@ -1,6 +1,5 @@
 package com.v2ray.ang.ui.main
 
-import android.animation.ValueAnimator
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -16,55 +15,15 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.*
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.*
 import com.v2ray.ang.R
 
+/** The global AppTheme owns palette and typography on every screen. */
 @Composable
-internal fun PremiumTheme(content:@Composable ()->Unit) {
-    MaterialTheme(colorScheme=darkColorScheme(
-        primary=Color(0xFF57F287),onPrimary=Color(0xFF080D0B),
-        primaryContainer=Color(0xFF0C5131),onPrimaryContainer=Color(0xFFF5F7F6),
-        secondary=Color(0xFF57F287),onSecondary=Color(0xFF080D0B),secondaryContainer=Color(0xFF1B2721),onSecondaryContainer=Color(0xFF57F287),
-        tertiary=Color(0xFF39E76C),onTertiary=Color(0xFF080D0B),outline=Color(0xFF26332C),
-        background=Color(0xFF080D0B),surface=Color(0xFF141C19),onSurface=Color(0xFFF5F7F6),
-        onBackground=Color(0xFFF5F7F6),onSurfaceVariant=Color(0xFF899991),
-        surfaceVariant=Color(0xFF1B2721),surfaceContainer=Color(0xFF1B2721),
-        surfaceContainerLowest=Color(0xFF080D0B),surfaceContainerLow=Color(0xFF141C19),
-        surfaceContainerHigh=Color(0xFF1B2721),surfaceContainerHighest=Color(0xFF26332C),
-        surfaceDim=Color(0xFF080D0B),surfaceBright=Color(0xFF1B2721),outlineVariant=Color(0xFF26332C)),
-        typography=com.v2ray.ang.ui.compose.BrandTypography,content=content)
-}
+internal fun PremiumTheme(content: @Composable () -> Unit) = content()
 
 @Composable
-internal fun ConnectionButton(status: ConnectionStatus, enabled:Boolean=true, diameter:Dp=228.dp, onClick:()->Unit) {
-    val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-    val spinning=status==ConnectionStatus.Connecting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && (android.os.Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled())
-    val angle=if(spinning) {
-        val transition=rememberInfiniteTransition(label="connection")
-        val rotation by transition.animateFloat(0f,360f,infiniteRepeatable(tween(1500,easing=LinearEasing)),label="rotation")
-        rotation
-    } else 0f
-    val intensity by animateFloatAsState(if(status==ConnectionStatus.Connected)1f else .12f,label="protection")
-    val accent=MaterialTheme.colorScheme.primary
-    val label=stringResource(if(status==ConnectionStatus.Connected)R.string.premium_disconnect else R.string.premium_connect)
-    val description=stringResource(when(status){ConnectionStatus.Connected->R.string.premium_on;ConnectionStatus.Connecting->R.string.premium_connecting;else->R.string.premium_off})
-    Surface(onClick=onClick,enabled=enabled&&status!=ConnectionStatus.Connecting,
-        modifier=Modifier.size(diameter).semantics { contentDescription=label; stateDescription=description },
-        shape=CircleShape,color=Color.Transparent) {
-        Canvas(Modifier.fillMaxSize()) {
-            val radius=size.minDimension*.39f
-            for(i in 1..6) drawCircle(accent.copy(alpha=intensity*.012f*(7-i)),radius+i*3.dp.toPx(),style=Stroke((i*3).dp.toPx()))
-            drawCircle(Brush.radialGradient(listOf(Color(0xFF183A27),Color(0xFF0D1812))),radius)
-            drawCircle(accent.copy(alpha=.18f+intensity*.7f),radius,style=Stroke(5.dp.toPx()))
-            if(status==ConnectionStatus.Connecting) drawArc(accent,angle,100f,false,topLeft=Offset(center.x-radius,center.y-radius),
-                size=Size(radius*2,radius*2),style=Stroke(6.dp.toPx(),cap=StrokeCap.Round))
-            val power=size.minDimension*.10f
-            drawArc(Color(0xFFF5F7F6),-50f,280f,false,topLeft=Offset(center.x-power,center.y-power),
-                size=Size(power*2,power*2),style=Stroke(4.dp.toPx(),cap=StrokeCap.Round))
-            drawLine(Color(0xFFF5F7F6),Offset(center.x,center.y-power*1.3f),Offset(center.x,center.y-power*.1f),4.dp.toPx(),StrokeCap.Round)
-        }
-    }
+internal fun ConnectionButton(status: ConnectionStatus, enabled: Boolean = true, diameter: Dp = 228.dp, onClick: () -> Unit) {
+    com.v2ray.ang.ui.compose.ConnectionPortal(status, enabled, diameter, onClick = onClick)
 }
 
 internal val countryFlags = linkedMapOf("🇷🇺" to R.string.premium_ru,"🇩🇪" to R.string.premium_de,
@@ -153,9 +112,7 @@ internal fun TrafficChart(samples:List<Float>,download:String?,upload:String?,du
 @Composable
 internal fun SubscriptionCard() {
     val accent=MaterialTheme.colorScheme.primary
-    val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-    val animate=lifecycle.isAtLeast(Lifecycle.State.RESUMED) &&
-        (android.os.Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled())
+    val animate = com.v2ray.ang.ui.compose.sceneMotionAllowed()
     val shimmer = if (animate) {
         rememberInfiniteTransition(label="pro sheen").animateFloat(
             -1f, 1f, infiniteRepeatable(tween(6500,easing=LinearEasing),RepeatMode.Reverse),label="sheen position")
@@ -180,13 +137,13 @@ internal fun SubscriptionCard() {
 }
 
 @Composable
-internal fun SettingsItem(title:String,subtitle:String,onClick:()->Unit,enabled:Boolean=true,icon:Int?=null) {
+internal fun SettingsItem(title:String,subtitle:String?,onClick:()->Unit,enabled:Boolean=true,icon:Int?=null) {
     Surface(onClick=onClick,enabled=enabled,shape=RoundedCornerShape(20.dp),modifier=Modifier.fillMaxWidth(),color=MaterialTheme.colorScheme.surface) {
         Row(Modifier.padding(20.dp),verticalAlignment=Alignment.CenterVertically) {
             icon?.let { Icon(androidx.compose.ui.res.painterResource(it), null, Modifier.padding(end=16.dp).size(22.dp), tint=MaterialTheme.colorScheme.primary) }
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 Text(title,style=MaterialTheme.typography.titleMedium)
-                Text(subtitle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                if (!subtitle.isNullOrBlank()) Text(subtitle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text("›",modifier=Modifier.clearAndSetSemantics {},fontSize=24.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
         }

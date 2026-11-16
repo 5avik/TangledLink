@@ -16,22 +16,26 @@ function fixture(plan=LAVA_PLANS[0]) {
     setExpiry:async(account,before,target)=>{expiry=target;writes++;if(fail){fail=false;throw new Error('ambiguous');}return {};}
   };
   const billing=createBilling({path,panel,instructions:'Test',clock:()=>1900000000000});
+  let creationAmount=plan.amountKopecks/100, rejectPromo=false;
+  const requests=[];
   const fetcher=async(url,options)=>{
     if(options.method==='POST'){
       creations++;
       if (failCreation) throw new Error('ambiguous invoice timeout');
-      const request=JSON.parse(options.body);
+      const request=JSON.parse(options.body);requests.push(request);
+      if(rejectPromo) return {ok:false,status:400,json:async()=>({error:'invalid promo'})};
       assert.equal(request.periodicity,'ONE_TIME');
       assert.equal(request.paymentProvider,'PAY2ME');
       assert.equal(request.paymentMethod,'SBP');
       for (const field of ['successful_return_url','failure_return_url','cancel_return_url'])
         assert.equal(request[field],'https://app.tngl.pro/billing/return');
-      return {ok:true,json:async()=>({id:creations===1?invoiceId:'22222222-2222-4222-8222-222222222222',amountTotal:{currency:'RUB',amount:plan.amountKopecks/100},paymentUrl:'https://pay.lava.top/test'})};
+      return {ok:true,json:async()=>({id:creations===1?invoiceId:'22222222-2222-4222-8222-222222222222',amountTotal:{currency:'RUB',amount:creationAmount},paymentUrl:'https://pay.lava.top/test'})};
     }
     return {ok:true,json:async()=>({id:url.split('/').at(-1),type:'ONE_TIME',status,receipt:{amount,currency:'RUB'},buyer:{email}})};
   };
   let lava=createLava({path,billing,key:'test-key',secret,fetcher});
   return {billing,get lava(){return lava},get writes(){return writes},get creations(){return creations},get expiry(){return expiry},
+    requests,setCreationAmount:v=>creationAmount=v,rejectPromo:v=>rejectPromo=v,
     setAmount:v=>amount=v,setStatus:v=>status=v,setEmail:v=>email=v,ambiguous:()=>fail=true,failCreation:()=>failCreation=true,
     restart(){lava.close();lava=createLava({path,billing,key:'test-key',secret,fetcher});},
     cleanup(){lava.close();billing.close();rmSync(dir,{recursive:true,force:true});},path};
@@ -172,6 +176,54 @@ test('ambiguous replacement is not retried after restart and keeps the old mappi
   f.setStatus('COMPLETED');await f.lava.processPending();
   assert.equal(f.billing.latest('svk').status,'paid');assert.equal(f.writes,1);
  }finally{f.cleanup();}
+});
+test('Lava promo quote is persisted and a discounted receipt renews the full duration once',async()=>{
+ const f=fixture();try{
+  f.setCreationAmount(100.01);f.setAmount(100.01);
+  const order=await f.lava.checkout('svk','month30','buyer@example.com',{promoCode:' sotka '});
+  assert.equal(f.requests[0].promoCode,'SOTKA');assert.equal(order.amountKopecks,10001);
+  assert.equal(order.promoCode,'SOTKA');assert.equal(order.days,30);
+  await f.lava.checkout('svk','month30','buyer@example.com',{promoCode:'SOTKA'});
+  assert.equal(f.creations,1);
+  await assert.rejects(f.lava.checkout('svk','month30','buyer@example.com'),{code:'promo_order_locked'});
+  f.restart();f.setStatus('FAILED');await f.lava.resume('svk',order.id);
+  assert.equal(f.requests[1].promoCode,'SOTKA');
+  f.setStatus('COMPLETED');await f.lava.processPending();await f.lava.processPending();
+  assert.equal(f.billing.latest('svk').amountKopecks,10001);assert.equal(f.writes,1);
+  assert.equal(f.expiry,2000000000000+30*86400000);
+ }finally{f.cleanup();}
+});
+test('invalid promo format and definite rejection allow correction without ambiguous retry',async()=>{
+ const f=fixture();try{
+  for(const code of ['x','кириллица','BAD CODE',123])
+   await assert.rejects(f.lava.checkout('svk','month30','buyer@example.com',{promoCode:code}),{code:'invalid_promo'});
+  assert.equal(f.creations,0);
+  f.rejectPromo(true);
+  await assert.rejects(f.lava.checkout('svk','month30','buyer@example.com',{promoCode:'EXPIRED'}),{code:'invalid_promo'});
+  assert.equal(f.writes,0);
+  f.rejectPromo(false);await f.lava.checkout('svk','month30','buyer@example.com');
+  assert.equal(f.creations,2);
+ }finally{f.cleanup();}
+});
+test('client cannot supply a discount and discounted invoices require the exact saved receipt',async()=>{
+ for(const quoted of [0,151,100.005]){
+  const f=fixture();try{
+   f.setCreationAmount(quoted);
+   await assert.rejects(f.lava.checkout('svk','month30','buyer@example.com',{promoCode:'SOTKA'}),{code:'lava_invoice_mismatch'});
+   assert.equal(f.writes,0);
+  }finally{f.cleanup();}
+ }
+ const f=fixture();try{
+  f.setCreationAmount(100);
+  await assert.rejects(f.lava.checkout('svk','month30','buyer@example.com'),{code:'lava_invoice_mismatch'});
+  assert.equal(f.writes,0);
+ }finally{f.cleanup();}
+ const g=fixture();try{
+  g.setCreationAmount(100);g.setAmount(99);
+  await g.lava.checkout('svk','month30','buyer@example.com',{promoCode:'SOTKA'});
+  await g.lava.processPending();assert.equal(g.writes,0);
+  g.setAmount(100);await g.lava.processPending();assert.equal(g.writes,1);
+ }finally{g.cleanup();}
 });
 test('periods and prices are fixed server-side',()=>{
  assert.deepEqual(LAVA_PLANS.map(p=>[p.days,p.amountKopecks]),[[30,15000],[90,45000],[180,90000],[360,180000]]);

@@ -8,7 +8,7 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 data class BillingPlan(val id: String, val amountKopecks: Int, val days: Int)
-data class BillingOrder(val id: String, val account: String, val status: String, val expiresAt: Long?, val pendingSync: Boolean, val paymentUrl: String? = null)
+data class BillingOrder(val id: String, val account: String, val status: String, val expiresAt: Long?, val pendingSync: Boolean, val paymentUrl: String? = null, val amountKopecks: Int? = null, val promoCode: String? = null)
 data class BillingSnapshot(val plan: BillingPlan, val instructions: String, val order: BillingOrder?, val plans: List<BillingPlan> = listOf(plan))
 
 interface BillingGateway {
@@ -16,6 +16,8 @@ interface BillingGateway {
     fun resume(orderId: String): BillingOrder = throw TnglAuthException("billing_unavailable")
     fun create(planId: String): BillingOrder
     fun create(planId: String, email: String): BillingOrder = create(planId)
+    fun create(planId: String, email: String, promoCode: String): BillingOrder =
+        if (promoCode.isEmpty()) create(planId, email) else throw TnglAuthException("billing_unavailable")
 }
 
 object TnglBillingClient : BillingGateway {
@@ -40,7 +42,9 @@ object TnglBillingClient : BillingGateway {
     private fun order(data: JSONObject): BillingOrder = BillingOrder(
         data.getString("id"), data.getString("account"), data.getString("status"),
         if (data.isNull("expiresAt")) null else data.getLong("expiresAt"),
-        data.optBoolean("pendingSync"), data.optString("paymentUrl").takeIf { it.startsWith("https://") }
+        data.optBoolean("pendingSync"), data.optString("paymentUrl").takeIf { it.startsWith("https://") },
+        if (data.has("amountKopecks")) data.getInt("amountKopecks") else null,
+        data.optString("promoCode").takeIf { it.isNotBlank() && it != "null" }
     )
     override fun load(): BillingSnapshot {
         val data = request("/v1/billing")
@@ -59,5 +63,8 @@ object TnglBillingClient : BillingGateway {
         order(request("/v1/billing/orders", JSONObject().put("orderId", orderId)).getJSONObject("order"))
     override fun create(planId: String): BillingOrder = create(planId, "")
     override fun create(planId: String, email: String): BillingOrder =
-        order(request("/v1/billing/orders", JSONObject().put("planId", planId).put("email", email)).getJSONObject("order"))
+        create(planId, email, "")
+    override fun create(planId: String, email: String, promoCode: String): BillingOrder =
+        order(request("/v1/billing/orders", JSONObject().put("planId", planId).put("email", email)
+            .put("promoCode", promoCode)).getJSONObject("order"))
 }

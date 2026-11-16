@@ -637,4 +637,10 @@
     <string name="billing_manual_note">Opening the payment page does not confirm payment. The administrator checks the payment and renews your subscription. Use “Check status” after payment.</string>
     <string name="billing_unavailable">Renewal is not configured yet. Please contact the administrator.</string>
     <string name="billing_manual_review">This subscription needs an administrator review before renewal.</string>
+    <string name="billing_promo">Promo code (optional)</string>
+    <string name="billing_promo_note">Lava calculates the discount. Check the final amount on the payment page.</string>
+    <string name="billing_invalid_promo">Invalid or unavailable promo code. Check its terms.</string>
+    <string name="billing_promo_locked">An invoice already exists. Its promo code cannot be changed.</string>
+    <string name="billing_total">Total: %1$s ₽</string>
+    <string name="billing_promo_value">Promo code: %1$s</string>
 </resources>

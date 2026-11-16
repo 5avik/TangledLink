@@ -49,9 +49,10 @@ val BrandShapes = Shapes(
     large = RoundedCornerShape(24.dp),
     extraLarge = RoundedCornerShape(28.dp)
 )
-val BrandGradient = Brush.linearGradient(
-    listOf(Color(0xFFC3FF92), Color(0xFF6EF5A8), Color(0xFF21D4A4))
-)
+val BrandGradient: Brush
+    @Composable get() = Brush.linearGradient(listOf(
+        MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary,
+    ))
 
 @Composable
 fun BrandButton(
@@ -66,7 +67,7 @@ fun BrandButton(
         shape = RoundedCornerShape(50),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.Transparent,
-            contentColor = Color(0xFF04140C),
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest
         ),
         contentPadding = PaddingValues(0.dp),

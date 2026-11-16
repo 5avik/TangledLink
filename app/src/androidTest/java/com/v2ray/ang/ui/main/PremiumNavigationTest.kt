@@ -46,7 +46,8 @@ class PremiumNavigationTest {
                             {}, {selectTab("servers")}, {selectTab("more")},
                             accountLogin="qa-account", contentInsets=padding, bottomPadding=clearance)
                         "more" -> MoreScreen(PremiumPreferences(), {}, {}, {selectTab("servers")},
-                            contentInsets=padding, bottomPadding=clearance)
+                            contentInsets=padding, bottomPadding=clearance, account={selectTab("account")})
+                        "account" -> AccountScreen("qa-account",null,{}, {selectTab("more")},padding,clearance)
                         "servers" -> {
                             var count by rememberSaveable { mutableIntStateOf(0) }
                             Column(Modifier.padding(padding)) {
@@ -59,6 +60,27 @@ class PremiumNavigationTest {
                     }
                 }
             }
+        }
+    }
+
+    @Test fun accountChildReturnsToSettingsAndNeverReopensFromHome() {
+        val restoration=StateRestorationTester(compose)
+        restoration.setContent {Fixture()}
+        repeat(2) {
+            tab(R.string.premium_more).performClick()
+            compose.onNodeWithText(label(R.string.premium_manage_account)).performScrollTo().performClick()
+            page("account");tab(R.string.premium_more).assertIsSelected()
+            compose.onNodeWithText(label(R.string.premium_password)).assertExists()
+            restoration.emulateSavedInstanceStateRestore()
+            page("account")
+            compose.onNodeWithContentDescription(label(R.string.premium_account_back)).performClick()
+            page("more")
+            compose.onNodeWithText(label(R.string.premium_password)).assertDoesNotExist()
+            compose.onNodeWithText(label(R.string.premium_manage_account)).performScrollTo().performClick()
+            page("account")
+            tab(R.string.premium_home).performClick();page("home")
+            tab(R.string.premium_more).performClick();page("more")
+            tab(R.string.premium_home).performClick();page("home")
         }
     }
 

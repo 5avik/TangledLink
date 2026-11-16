@@ -1,0 +1,674 @@
+[
+  {
+    "theme": "original",
+    "mode": "light",
+    "foreground": "onPrimary",
+    "background": "primary",
+    "ratio": 6.55
+  },
+  {
+    "theme": "original",
+    "mode": "light",
+    "foreground": "onPrimaryContainer",
+    "background": "primaryContainer",
+    "ratio": 13.75
+  },
+  {
+    "theme": "original",
+    "mode": "light",
+    "foreground": "onSecondary",
+    "background": "secondary",
+    "ratio": 6.524
+  },
+  {
+    "theme": "original",
+    "mode": "light",
+    "foreground": "onSecondaryContainer",
+    "background": "secondaryContainer",
+    "ratio": 13.356
+  },
+  {
+    "theme": "original",
+    "mode": "light",
+    "foreground": "onTertiary",
+    "background": "tertiary",
+    "ratio": 6.524
+  },
+  {
+    "theme": "original",
+    "mode": "light",
+    "foreground": "onTertiaryContainer",
+    "background": "tertiaryContainer",
+    "ratio": 13.356
+  },
+  {
+    "theme": "original",
+    "mode": "light",
+    "foreground": "onBackground",
+    "background": "background",
+    "ratio": 15.679
+  },
+  {
+    "theme": "original",
+    "mode": "light",
+    "foreground": "onSurface",
+    "background": "surface",
+    "ratio": 16.189
+  },
+  {
+    "theme": "original",
+    "mode": "light",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceVariant",
+    "ratio": 7.274
+  },
+  {
+    "theme": "original",
+    "mode": "light",
+    "foreground": "onError",
+    "background": "error",
+    "ratio": 6.461
+  },
+  {
+    "theme": "original",
+    "mode": "light",
+    "foreground": "onErrorContainer",
+    "background": "errorContainer",
+    "ratio": 13.26
+  },
+  {
+    "theme": "original",
+    "mode": "light",
+    "foreground": "inverseOnSurface",
+    "background": "inverseSurface",
+    "ratio": 16.341
+  },
+  {
+    "theme": "original",
+    "mode": "dark",
+    "foreground": "onPrimary",
+    "background": "primary",
+    "ratio": 15.47
+  },
+  {
+    "theme": "original",
+    "mode": "dark",
+    "foreground": "onPrimaryContainer",
+    "background": "primaryContainer",
+    "ratio": 11.094
+  },
+  {
+    "theme": "original",
+    "mode": "dark",
+    "foreground": "onSecondary",
+    "background": "secondary",
+    "ratio": 13.712
+  },
+  {
+    "theme": "original",
+    "mode": "dark",
+    "foreground": "onSecondaryContainer",
+    "background": "secondaryContainer",
+    "ratio": 11.176
+  },
+  {
+    "theme": "original",
+    "mode": "dark",
+    "foreground": "onTertiary",
+    "background": "tertiary",
+    "ratio": 13.712
+  },
+  {
+    "theme": "original",
+    "mode": "dark",
+    "foreground": "onTertiaryContainer",
+    "background": "tertiaryContainer",
+    "ratio": 11.176
+  },
+  {
+    "theme": "original",
+    "mode": "dark",
+    "foreground": "onBackground",
+    "background": "background",
+    "ratio": 18.32
+  },
+  {
+    "theme": "original",
+    "mode": "dark",
+    "foreground": "onSurface",
+    "background": "surface",
+    "ratio": 17.255
+  },
+  {
+    "theme": "original",
+    "mode": "dark",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceVariant",
+    "ratio": 7.155
+  },
+  {
+    "theme": "original",
+    "mode": "dark",
+    "foreground": "onError",
+    "background": "error",
+    "ratio": 7.717
+  },
+  {
+    "theme": "original",
+    "mode": "dark",
+    "foreground": "onErrorContainer",
+    "background": "errorContainer",
+    "ratio": 7.239
+  },
+  {
+    "theme": "original",
+    "mode": "dark",
+    "foreground": "inverseOnSurface",
+    "background": "inverseSurface",
+    "ratio": 18.32
+  },
+  {
+    "theme": "sakura",
+    "mode": "light",
+    "foreground": "onPrimary",
+    "background": "primary",
+    "ratio": 7.185
+  },
+  {
+    "theme": "sakura",
+    "mode": "light",
+    "foreground": "onPrimaryContainer",
+    "background": "primaryContainer",
+    "ratio": 13.677
+  },
+  {
+    "theme": "sakura",
+    "mode": "light",
+    "foreground": "onSecondary",
+    "background": "secondary",
+    "ratio": 7.307
+  },
+  {
+    "theme": "sakura",
+    "mode": "light",
+    "foreground": "onSecondaryContainer",
+    "background": "secondaryContainer",
+    "ratio": 13.667
+  },
+  {
+    "theme": "sakura",
+    "mode": "light",
+    "foreground": "onTertiary",
+    "background": "tertiary",
+    "ratio": 7.307
+  },
+  {
+    "theme": "sakura",
+    "mode": "light",
+    "foreground": "onTertiaryContainer",
+    "background": "tertiaryContainer",
+    "ratio": 13.667
+  },
+  {
+    "theme": "sakura",
+    "mode": "light",
+    "foreground": "onBackground",
+    "background": "background",
+    "ratio": 15.794
+  },
+  {
+    "theme": "sakura",
+    "mode": "light",
+    "foreground": "onSurface",
+    "background": "surface",
+    "ratio": 16.178
+  },
+  {
+    "theme": "sakura",
+    "mode": "light",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceVariant",
+    "ratio": 7.178
+  },
+  {
+    "theme": "sakura",
+    "mode": "light",
+    "foreground": "onError",
+    "background": "error",
+    "ratio": 6.461
+  },
+  {
+    "theme": "sakura",
+    "mode": "light",
+    "foreground": "onErrorContainer",
+    "background": "errorContainer",
+    "ratio": 13.26
+  },
+  {
+    "theme": "sakura",
+    "mode": "light",
+    "foreground": "inverseOnSurface",
+    "background": "inverseSurface",
+    "ratio": 14.158
+  },
+  {
+    "theme": "sakura",
+    "mode": "dark",
+    "foreground": "onPrimary",
+    "background": "primary",
+    "ratio": 6.28
+  },
+  {
+    "theme": "sakura",
+    "mode": "dark",
+    "foreground": "onPrimaryContainer",
+    "background": "primaryContainer",
+    "ratio": 11.445
+  },
+  {
+    "theme": "sakura",
+    "mode": "dark",
+    "foreground": "onSecondary",
+    "background": "secondary",
+    "ratio": 8.636
+  },
+  {
+    "theme": "sakura",
+    "mode": "dark",
+    "foreground": "onSecondaryContainer",
+    "background": "secondaryContainer",
+    "ratio": 11.41
+  },
+  {
+    "theme": "sakura",
+    "mode": "dark",
+    "foreground": "onTertiary",
+    "background": "tertiary",
+    "ratio": 8.636
+  },
+  {
+    "theme": "sakura",
+    "mode": "dark",
+    "foreground": "onTertiaryContainer",
+    "background": "tertiaryContainer",
+    "ratio": 11.41
+  },
+  {
+    "theme": "sakura",
+    "mode": "dark",
+    "foreground": "onBackground",
+    "background": "background",
+    "ratio": 17.73
+  },
+  {
+    "theme": "sakura",
+    "mode": "dark",
+    "foreground": "onSurface",
+    "background": "surface",
+    "ratio": 15.954
+  },
+  {
+    "theme": "sakura",
+    "mode": "dark",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceVariant",
+    "ratio": 8.094
+  },
+  {
+    "theme": "sakura",
+    "mode": "dark",
+    "foreground": "onError",
+    "background": "error",
+    "ratio": 7.717
+  },
+  {
+    "theme": "sakura",
+    "mode": "dark",
+    "foreground": "onErrorContainer",
+    "background": "errorContainer",
+    "ratio": 7.239
+  },
+  {
+    "theme": "sakura",
+    "mode": "dark",
+    "foreground": "inverseOnSurface",
+    "background": "inverseSurface",
+    "ratio": 17.73
+  },
+  {
+    "theme": "aurora",
+    "mode": "light",
+    "foreground": "onPrimary",
+    "background": "primary",
+    "ratio": 6.499
+  },
+  {
+    "theme": "aurora",
+    "mode": "light",
+    "foreground": "onPrimaryContainer",
+    "background": "primaryContainer",
+    "ratio": 13.338
+  },
+  {
+    "theme": "aurora",
+    "mode": "light",
+    "foreground": "onSecondary",
+    "background": "secondary",
+    "ratio": 6.562
+  },
+  {
+    "theme": "aurora",
+    "mode": "light",
+    "foreground": "onSecondaryContainer",
+    "background": "secondaryContainer",
+    "ratio": 13.237
+  },
+  {
+    "theme": "aurora",
+    "mode": "light",
+    "foreground": "onTertiary",
+    "background": "tertiary",
+    "ratio": 6.562
+  },
+  {
+    "theme": "aurora",
+    "mode": "light",
+    "foreground": "onTertiaryContainer",
+    "background": "tertiaryContainer",
+    "ratio": 13.237
+  },
+  {
+    "theme": "aurora",
+    "mode": "light",
+    "foreground": "onBackground",
+    "background": "background",
+    "ratio": 14.999
+  },
+  {
+    "theme": "aurora",
+    "mode": "light",
+    "foreground": "onSurface",
+    "background": "surface",
+    "ratio": 15.579
+  },
+  {
+    "theme": "aurora",
+    "mode": "light",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceVariant",
+    "ratio": 6.915
+  },
+  {
+    "theme": "aurora",
+    "mode": "light",
+    "foreground": "onError",
+    "background": "error",
+    "ratio": 6.461
+  },
+  {
+    "theme": "aurora",
+    "mode": "light",
+    "foreground": "onErrorContainer",
+    "background": "errorContainer",
+    "ratio": 13.26
+  },
+  {
+    "theme": "aurora",
+    "mode": "light",
+    "foreground": "inverseOnSurface",
+    "background": "inverseSurface",
+    "ratio": 12.677
+  },
+  {
+    "theme": "aurora",
+    "mode": "dark",
+    "foreground": "onPrimary",
+    "background": "primary",
+    "ratio": 13.033
+  },
+  {
+    "theme": "aurora",
+    "mode": "dark",
+    "foreground": "onPrimaryContainer",
+    "background": "primaryContainer",
+    "ratio": 10.004
+  },
+  {
+    "theme": "aurora",
+    "mode": "dark",
+    "foreground": "onSecondary",
+    "background": "secondary",
+    "ratio": 8.56
+  },
+  {
+    "theme": "aurora",
+    "mode": "dark",
+    "foreground": "onSecondaryContainer",
+    "background": "secondaryContainer",
+    "ratio": 10.813
+  },
+  {
+    "theme": "aurora",
+    "mode": "dark",
+    "foreground": "onTertiary",
+    "background": "tertiary",
+    "ratio": 8.56
+  },
+  {
+    "theme": "aurora",
+    "mode": "dark",
+    "foreground": "onTertiaryContainer",
+    "background": "tertiaryContainer",
+    "ratio": 10.813
+  },
+  {
+    "theme": "aurora",
+    "mode": "dark",
+    "foreground": "onBackground",
+    "background": "background",
+    "ratio": 17.878
+  },
+  {
+    "theme": "aurora",
+    "mode": "dark",
+    "foreground": "onSurface",
+    "background": "surface",
+    "ratio": 15.61
+  },
+  {
+    "theme": "aurora",
+    "mode": "dark",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceVariant",
+    "ratio": 7.484
+  },
+  {
+    "theme": "aurora",
+    "mode": "dark",
+    "foreground": "onError",
+    "background": "error",
+    "ratio": 7.717
+  },
+  {
+    "theme": "aurora",
+    "mode": "dark",
+    "foreground": "onErrorContainer",
+    "background": "errorContainer",
+    "ratio": 7.239
+  },
+  {
+    "theme": "aurora",
+    "mode": "dark",
+    "foreground": "inverseOnSurface",
+    "background": "inverseSurface",
+    "ratio": 17.878
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "light",
+    "foreground": "onPrimary",
+    "background": "primary",
+    "ratio": 7.911
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "light",
+    "foreground": "onPrimaryContainer",
+    "background": "primaryContainer",
+    "ratio": 13.573
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "light",
+    "foreground": "onSecondary",
+    "background": "secondary",
+    "ratio": 6.468
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "light",
+    "foreground": "onSecondaryContainer",
+    "background": "secondaryContainer",
+    "ratio": 13.494
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "light",
+    "foreground": "onTertiary",
+    "background": "tertiary",
+    "ratio": 6.468
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "light",
+    "foreground": "onTertiaryContainer",
+    "background": "tertiaryContainer",
+    "ratio": 13.494
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "light",
+    "foreground": "onBackground",
+    "background": "background",
+    "ratio": 15.701
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "light",
+    "foreground": "onSurface",
+    "background": "surface",
+    "ratio": 16.012
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "light",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceVariant",
+    "ratio": 6.986
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "light",
+    "foreground": "onError",
+    "background": "error",
+    "ratio": 6.461
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "light",
+    "foreground": "onErrorContainer",
+    "background": "errorContainer",
+    "ratio": 13.26
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "light",
+    "foreground": "inverseOnSurface",
+    "background": "inverseSurface",
+    "ratio": 15.204
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "dark",
+    "foreground": "onPrimary",
+    "background": "primary",
+    "ratio": 6.266
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "dark",
+    "foreground": "onPrimaryContainer",
+    "background": "primaryContainer",
+    "ratio": 13.062
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "dark",
+    "foreground": "onSecondary",
+    "background": "secondary",
+    "ratio": 11.963
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "dark",
+    "foreground": "onSecondaryContainer",
+    "background": "secondaryContainer",
+    "ratio": 11.688
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "dark",
+    "foreground": "onTertiary",
+    "background": "tertiary",
+    "ratio": 11.963
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "dark",
+    "foreground": "onTertiaryContainer",
+    "background": "tertiaryContainer",
+    "ratio": 11.688
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "dark",
+    "foreground": "onBackground",
+    "background": "background",
+    "ratio": 19.904
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "dark",
+    "foreground": "onSurface",
+    "background": "surface",
+    "ratio": 17.816
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "dark",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceVariant",
+    "ratio": 8.206
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "dark",
+    "foreground": "onError",
+    "background": "error",
+    "ratio": 7.717
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "dark",
+    "foreground": "onErrorContainer",
+    "background": "errorContainer",
+    "ratio": 7.239
+  },
+  {
+    "theme": "cyberpunk",
+    "mode": "dark",
+    "foreground": "inverseOnSurface",
+    "background": "inverseSurface",
+    "ratio": 19.904
+  }
+]

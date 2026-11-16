@@ -3,11 +3,16 @@ import { createAuth, ApiError } from './auth.mjs';
 import { subscription } from './upstream.mjs';
 import { panel, billing, lava } from './billing-runtime.mjs';
 import { LAVA_PLANS } from './lava.mjs';
+import { createWebBilling } from './web-billing.mjs';
 
 process.umask(0o077);
 const base = process.env.SUBSCRIPTION_BASE;
 if (!base) throw new Error('SUBSCRIPTION_BASE is required');
 const auth = createAuth(process.env.AUTH_DB ?? '/var/lib/tngl-auth/auth.sqlite');
+const webBilling = lava && process.env.WEB_BILLING_KEY ? createWebBilling({
+  path: process.env.BILLING_DB ?? '/var/lib/tngl-auth/billing.sqlite',
+  key: process.env.WEB_BILLING_KEY, billing, lava
+}) : null;
 const buckets = new Map();
 let working = 0;
 function limit(key, maximum) {
@@ -35,7 +40,7 @@ async function json(req) {
     return value;
   } catch { throw new ApiError(400, 'invalid_json'); }
 }
-export function createApiServer({ authStore = auth, billingStore = billing, panelClient = panel, subscriptionReader = subscription, lavaStore = lava } = {}) {
+export function createApiServer({ authStore = auth, billingStore = billing, panelClient = panel, subscriptionReader = subscription, lavaStore = lava, webBillingStore = webBilling } = {}) {
 const auth = authStore;
 return createServer(async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -47,6 +52,26 @@ return createServer(async (req, res) => {
   try {
     const path = req.url;
     const ip = req.headers['x-real-ip'] ?? req.socket.remoteAddress;
+    if (path.startsWith('/v1/web-billing/')) {
+      if (!webBillingStore) throw new ApiError(503, 'billing_unavailable');
+      webBillingStore.authenticate(req.headers['x-web-billing-key']);
+      const client = String(req.headers['x-web-client-ip'] ?? ip).slice(0, 64);
+      limit('web:' + client, 180);
+      if (req.method === 'GET' && path === '/v1/web-billing/plans')
+        return reply(200, { plans: webBillingStore.plans() });
+      if (req.method !== 'POST') throw new ApiError(404, 'not_found');
+      const data = await json(req);
+      if (path === '/v1/web-billing/orders') {
+        limit('web-orders:' + client, 10);
+        return reply(200, await webBillingStore.checkout(data));
+      }
+      if (path === '/v1/web-billing/status') return reply(200, webBillingStore.status(data.token));
+      if (path === '/v1/web-billing/resume') {
+        limit('web-resume:' + client, 10);
+        return reply(200, await webBillingStore.resume(data.token));
+      }
+      throw new ApiError(404, 'not_found');
+    }
     limit('all:' + ip, 300);
     if (req.method === 'GET' && path === '/health') return reply(200, { status: 'ok' });
     if (req.method === 'POST' && path === '/v1/billing/webhooks/lava') {
@@ -70,7 +95,7 @@ return createServer(async (req, res) => {
       const data = await json(req);
       if (lavaStore) return reply(200, {order: data.orderId !== undefined
         ? await lavaStore.resume(session.account, data.orderId)
-        : await lavaStore.checkout(session.account, data.planId, data.email)});
+        : await lavaStore.checkout(session.account, data.planId, data.email, {promoCode:data.promoCode ?? ''})});
       if (data.planId !== billingStore.plan.id) throw new ApiError(400, 'invalid_plan');
       return reply(200, { order: await billingStore.create(session.account) });
     }

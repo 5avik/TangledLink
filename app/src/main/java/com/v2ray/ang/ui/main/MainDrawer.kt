@@ -39,6 +39,7 @@ enum class MainDestination(@DrawableRes val iconRes: Int, @StringRes val labelRe
     Routing(R.drawable.ic_routing_24dp, R.string.routing_settings_title),
     UserAssets(R.drawable.ic_file_24dp, R.string.title_user_asset_setting),
     Settings(R.drawable.ic_settings_24dp, R.string.title_settings),
+    Themes(R.drawable.ic_premium_home, R.string.themes_title),
     Logcat(R.drawable.ic_logcat_24dp, R.string.title_logcat),
     BackupRestore(R.drawable.ic_restore_24dp, R.string.title_configuration_backup_restore),
     About(R.drawable.ic_about_24dp, R.string.title_about)

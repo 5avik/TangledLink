@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.*
 import androidx.navigation.compose.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.v2ray.ang.R
+import com.v2ray.ang.ui.compose.LocalThemeConfig
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -47,7 +48,10 @@ internal fun PremiumShell(vm: MainViewModel, action: (MainAction)->Unit, navigat
                     prefs.months, {action(MainAction.SelectPremiumPlan(it))},
                     onRenew={action(MainAction.BeginBilling(prefs.months))}, contentInsets=padding, bottomPadding=bottomClearance)
                 "more" -> MoreScreen(prefs, navigate, action, {selectTab("servers")},
-                    contentInsets=padding, bottomPadding=bottomClearance)
+                    contentInsets=padding, bottomPadding=bottomClearance, account={selectTab("account")})
+                "account" -> AccountScreen(state.accountLogin,
+                    state.groups.firstOrNull {it.id==com.v2ray.ang.AppConfig.TNGL_SUB_ID}?.usageInfo,
+                    action, {selectTab("more")}, padding, bottomClearance)
             }
         }
     }
@@ -65,7 +69,12 @@ internal fun PremiumTabNavigation(
     val tabs = remember { listOf("home", "servers", "subscription", "more") }
     val selectTab: (String) -> Unit = remember(nav) {
         { target ->
-            if (target in tabs && nav.currentDestination?.route != target) {
+            if (nav.currentDestination?.route == "account" && target in tabs) {
+                nav.popBackStack("more", inclusive=false)
+            }
+            if (target == "account" && nav.currentDestination?.route == "more") {
+                nav.navigate("account") {launchSingleTop=true}
+            } else if (target in tabs && nav.currentDestination?.route != target) {
                 nav.navigate(target) {
                     popUpTo("home") { saveState = true }
                     launchSingleTop = true
@@ -85,11 +94,12 @@ internal fun PremiumTabNavigation(
             returnHandled = true
         }
     }
-    FloatingNavigationLayout(route, selectTab) { padding, bottomClearance ->
+    androidx.activity.compose.BackHandler(enabled=route=="account") {selectTab("more")}
+    FloatingNavigationLayout(if(route=="account") "more" else route, selectTab) { padding, bottomClearance ->
         Box(Modifier.fillMaxSize()) {
             NavHost(nav, startDestination="home",
                 modifier=Modifier.align(Alignment.TopCenter).widthIn(max=840.dp).fillMaxSize()) {
-                tabs.forEach { target ->
+                (tabs + "account").forEach { target ->
                     composable(target) { content(target, selectTab, padding, bottomClearance) }
                 }
             }
@@ -158,13 +168,19 @@ internal fun HomeScreen(
 
 @Composable
 private fun HomeHeader(compact: Boolean, settings: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Image(painterResource(R.mipmap.ic_launcher_foreground), null, Modifier.size(if (compact) 32.dp else 40.dp))
+    val scene = LocalThemeConfig.current.scene
+    Surface(color = scene.background.copy(alpha = .78f), contentColor = scene.onScene,
+        shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        coil3.compose.AsyncImage(R.drawable.tngl_brand_mark, null,
+            Modifier.width(if (compact) 32.dp else 40.dp).aspectRatio(256f / 240f),
+            contentScale = androidx.compose.ui.layout.ContentScale.Fit)
         Text(stringResource(R.string.app_name), Modifier.weight(1f).padding(horizontal = 8.dp),
             style = MaterialTheme.typography.titleLarge)
         IconButton(onClick = settings) {
             Icon(painterResource(R.drawable.ic_settings_24dp), stringResource(R.string.premium_settings))
         }
+    }
     }
 }
 
@@ -180,10 +196,13 @@ private fun HomeControls(
     val textStyle = if (compact) MaterialTheme.typography.titleMedium.copy(
         fontFamily = MaterialTheme.typography.titleLarge.fontFamily,
     ) else MaterialTheme.typography.titleLarge
+    val scene = LocalThemeConfig.current.scene
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (!login.isNullOrBlank()) {
-            Text(login, style = textStyle, color = MaterialTheme.colorScheme.primary, maxLines = 1,
+            Text(login, modifier = Modifier.background(scene.background.copy(alpha = .85f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+                style = textStyle, color = scene.onScene, maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
         ConnectionButton(status, enabled = enabled, diameter = diameter, onClick = connect)
@@ -193,7 +212,10 @@ private fun HomeControls(
                 ConnectionStatus.Connecting -> R.string.premium_connecting
                 else -> R.string.premium_off
             }),
+            modifier = Modifier.background(scene.background.copy(alpha = .85f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             style = textStyle,
+            color = scene.onScene,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
     }
@@ -286,7 +308,7 @@ internal fun SubscriptionScreen(info: com.v2ray.ang.dto.entities.SubscriptionUsa
 }
 
 @Composable
-internal fun MoreScreen(prefs: PremiumPreferences, navigate:(MainDestination)->Unit, action:(MainAction)->Unit, servers:()->Unit, contentInsets:PaddingValues=PaddingValues(0.dp), bottomPadding:Dp=0.dp) {
+internal fun MoreScreen(prefs: PremiumPreferences, navigate:(MainDestination)->Unit, action:(MainAction)->Unit, servers:()->Unit, contentInsets:PaddingValues=PaddingValues(0.dp), bottomPadding:Dp=0.dp, account:()->Unit = {}) {
     var languageDialog by rememberSaveable { mutableStateOf(false) }
     var advanced by rememberSaveable { mutableStateOf(false) }
     if (languageDialog) AlertDialog(
@@ -305,18 +327,20 @@ internal fun MoreScreen(prefs: PremiumPreferences, navigate:(MainDestination)->U
     )
     LazyColumn(Modifier.fillMaxSize(),contentPadding=floatingContentPadding(contentInsets,bottomPadding,24.dp,24.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item { Text(stringResource(R.string.premium_settings),style=MaterialTheme.typography.headlineMedium) }
+        item { SettingsItem(stringResource(R.string.premium_manage_account),
+            stringResource(R.string.premium_manage_account_note),account,icon=R.drawable.ic_lock_24dp) }
+        item { SettingsItem(stringResource(R.string.themes_title), stringResource(R.string.themes_note),
+            {navigate(MainDestination.Themes)}, icon=R.drawable.ic_premium_home) }
         item { SettingsItem(stringResource(R.string.premium_auto_connect),stringResource(R.string.premium_autoconnect_note),{action(MainAction.OpenSystemVpnSettings)},icon=R.drawable.ic_lock_24dp) }
         item { SettingsToggle(stringResource(R.string.premium_start_connect),stringResource(R.string.premium_launch_note),prefs.connectOnLaunch,{action(MainAction.SetConnectOnLaunch(it))}) }
         item { SettingsItem(stringResource(R.string.premium_notifications),stringResource(R.string.premium_notification_note),{action(MainAction.OpenNotificationSettings)},icon=R.drawable.ic_description_24dp) }
         item { SettingsItem(stringResource(R.string.premium_language),stringResource(R.string.premium_language_note),{languageDialog=true},icon=R.drawable.ic_translate_24dp) }
         item { SettingsItem(stringResource(R.string.premium_protocol),stringResource(R.string.premium_protocol_note),servers,icon=R.drawable.ic_routing_24dp) }
         item { SettingsItem(stringResource(R.string.premium_split),stringResource(R.string.premium_apps),{navigate(MainDestination.PerAppProxy)}) }
-        item { SettingsItem(stringResource(R.string.premium_password),"TangledLink",{action(MainAction.ShowPasswordDialog)}) }
-        item { SettingsItem(stringResource(R.string.premium_account),"TangledLink",{action(MainAction.ChangeAccount)}) }
         item { SettingsItem(stringResource(R.string.premium_about),"TangledLink",{navigate(MainDestination.About)},icon=R.drawable.ic_about_24dp) }
         item { SettingsItem(stringResource(R.string.premium_advanced),stringResource(R.string.premium_advanced_note),{advanced=!advanced}) }
         if (advanced) {
-            MainDestination.entries.filter { it !in setOf(MainDestination.About, MainDestination.PerAppProxy) }.forEach { destination ->
+            MainDestination.entries.filter { it !in setOf(MainDestination.About, MainDestination.PerAppProxy, MainDestination.Themes) }.forEach { destination ->
                 item(key=destination.name) { SettingsItem(stringResource(destination.labelRes),stringResource(R.string.premium_settings_note),{navigate(destination)},icon=destination.iconRes) }
             }
             item { SettingsItem(stringResource(R.string.premium_restart),stringResource(R.string.premium_restart_note),{action(MainAction.RestartService)},icon=R.drawable.ic_refresh_24dp) }

@@ -14,6 +14,11 @@ class BillingControllerTest {
         var failure: String? = null
         var created = 0
         var resumed = 0
+        var promo = ""
+        override fun create(planId: String, email: String, promoCode: String): BillingOrder {
+            promo = promoCode
+            return create(planId)
+        }
         override fun resume(orderId: String): BillingOrder {
             check(orderId == value.order?.id)
             failure?.let { throw TnglAuthException(it) }
@@ -30,6 +35,29 @@ class BillingControllerTest {
             created++
             return requireNotNull(value.order)
         }
+    }
+    @Test fun promoIsOptionalValidatedAndSentToServerWithoutClientSidePricing() {
+        val scope=CoroutineScope(SupervisorJob()+Dispatchers.Unconfined)
+        val fake=Fake(BillingSnapshot(plan,"",pending))
+        val controller=BillingController(scope,Dispatchers.Unconfined,fake){}
+        try {
+            assertEquals("",controller.uiState.value.promoCode)
+            controller.open();controller.email("buyer@example.com")
+            for(code in listOf("a","НЕВЕРНЫЙ","BAD CODE")) {
+                controller.promoCode(code);controller.create()
+                assertEquals(R.string.billing_invalid_promo,controller.uiState.value.error)
+                assertEquals(0,fake.created)
+            }
+            controller.promoCode(" sotka ");controller.create()
+            assertEquals("SOTKA",fake.promo);assertEquals(1,fake.created)
+            fake.failure="invalid_promo";controller.create()
+            assertEquals(R.string.billing_invalid_promo,controller.uiState.value.error)
+            fake.failure="promo_order_locked";controller.create()
+            assertEquals(R.string.billing_promo_locked,controller.uiState.value.error)
+            fake.failure=null;controller.promoCode("");controller.create()
+            assertEquals("",fake.promo);assertEquals(2,fake.created)
+            assertEquals(15000,controller.uiState.value.snapshot?.plan?.amountKopecks)
+        } finally {scope.cancel()}
     }
     @Test fun payRechecksWithServerAndUsesOnlyItsFreshLink() {
         val scope=CoroutineScope(SupervisorJob()+Dispatchers.Unconfined)

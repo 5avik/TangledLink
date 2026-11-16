@@ -3,7 +3,7 @@ name: Build and test
 on:
   push:
     branches: [main, test]
-    tags: [v0.9.4-test]
+    tags: ['v*-test']
   pull_request:
   workflow_dispatch:
 

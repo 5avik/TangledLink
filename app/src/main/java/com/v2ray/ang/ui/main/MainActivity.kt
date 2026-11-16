@@ -193,11 +193,14 @@ class MainActivity : HelperBaseComponentActivity() {
             MainDestination.Routing -> Intent(this, RoutingSettingActivity::class.java)
             MainDestination.UserAssets -> Intent(this, UserAssetActivity::class.java)
             MainDestination.Settings -> Intent(this, SettingsActivity::class.java)
+            MainDestination.Themes -> Intent(this, com.v2ray.ang.ui.themes.ThemePickerActivity::class.java)
             MainDestination.Logcat -> Intent(this, LogcatActivity::class.java)
             MainDestination.BackupRestore -> Intent(this, BackupActivity::class.java)
             MainDestination.About -> Intent(this, AboutActivity::class.java)
         }
-        settingsActivityLauncher.launch(intent)
+        // Appearance never consumes engine-change flags or restarts the service.
+        if (destination == MainDestination.Themes) startActivity(intent)
+        else settingsActivityLauncher.launch(intent)
     }
 
     private fun openSystemSettings(intent: Intent) {

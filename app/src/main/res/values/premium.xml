@@ -91,4 +91,12 @@
     <string name="premium_kbytes_second">КБ/с</string>
     <string name="premium_mbytes_second">МБ/с</string>
     <string name="premium_gbytes_second">ГБ/с</string>
+    <string name="premium_manage_account">Управление аккаунтом</string>
+    <string name="premium_manage_account_note">Профиль, пароль и вход</string>
+    <string name="premium_current_account">Текущий аккаунт</string>
+    <string name="premium_subscription_id">ID подписки</string>
+    <string name="premium_signed_in">Вы вошли в аккаунт</string>
+    <string name="premium_signed_out">Вход не выполнен</string>
+    <string name="premium_account_back">Вернуться в настройки</string>
+    <string name="premium_valid_until">Действует до %1$s</string>
 </resources>

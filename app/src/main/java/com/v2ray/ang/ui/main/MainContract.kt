@@ -99,6 +99,7 @@ sealed interface MainAction {
     data object DismissBilling : MainAction
     data object CreateBillingOrder : MainAction
     data class BillingEmail(val value: String) : MainAction
+    data class BillingPromoCode(val value: String) : MainAction
     data class BillingPlanSelected(val id: String) : MainAction
     data object RefreshBilling : MainAction
     data object OpenBillingPayment : MainAction

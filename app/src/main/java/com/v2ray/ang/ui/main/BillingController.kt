@@ -16,6 +16,7 @@ data class BillingUiState(
     val snapshot: BillingSnapshot? = null,
     val error: Int? = null,
     val email: String = "",
+    val promoCode: String = "",
     val planId: String = "month30",
     val hasCreatedOrder: Boolean = false,
     val returnSequence: Long = 0
@@ -75,6 +76,7 @@ internal class BillingController(
     }
 
     fun email(value: String) { if (!state.value.busy) state.update { it.copy(email = value.take(254), error = null) } }
+    fun promoCode(value: String) { if (!state.value.busy) state.update { it.copy(promoCode = value.take(36), error = null) } }
     fun selectPlan(value: String) { if (!state.value.busy) state.update { it.copy(planId = value, error = null) } }
     fun refresh() = run { gateway.load() }
     fun create() {
@@ -87,7 +89,11 @@ internal class BillingController(
         if (snapshot.plans.none { it.id == value.planId }) {
             state.update { it.copy(error = R.string.billing_manual_review) }; return
         }
-        run(openPayment = true) { snapshot.copy(order = gateway.create(value.planId, email)) }
+        val promo = value.promoCode.trim().uppercase(java.util.Locale.ROOT)
+        if (promo.isNotEmpty() && !Regex("[A-Z0-9_-]{3,36}").matches(promo)) {
+            state.update { it.copy(error = R.string.billing_invalid_promo) }; return
+        }
+        run(openPayment = true) { snapshot.copy(order = gateway.create(value.planId, email, promo)) }
     }
     private fun run(openPayment: Boolean = false, awaitConfirmation: Boolean = false, operation: () -> BillingSnapshot) {
         if (state.value.busy) return
@@ -117,6 +123,8 @@ internal class BillingController(
             catch (e: Exception) {
                 val error = when ((e as? TnglAuthException)?.errorCode) {
                     "invalid_email" -> R.string.billing_invalid_email
+                    "invalid_promo" -> R.string.billing_invalid_promo
+                    "promo_order_locked" -> R.string.billing_promo_locked
                     "invoice_requires_review", "existing_order_different_plan", "order_requires_review" -> R.string.billing_manual_review
                     "billing_unavailable" -> R.string.billing_unavailable
                     "session_expired" -> R.string.auth_session_expired

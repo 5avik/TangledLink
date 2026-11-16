@@ -354,6 +354,7 @@ class MainViewModel(
                 com.v2ray.ang.handler.AppLocaleManager.setApplicationLanguage(action.code)
             }
             is MainAction.BillingEmail -> billing.email(action.value)
+            is MainAction.BillingPromoCode -> billing.promoCode(action.value)
             is MainAction.BillingPlanSelected -> billing.selectPlan(action.id)
             is MainAction.BeginBilling -> if (action.months in listOf(1,3,6,12)) billing.open("month" + action.months * 30)
             MainAction.ReturnFromBilling -> {

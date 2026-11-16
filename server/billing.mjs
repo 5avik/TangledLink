@@ -34,9 +34,22 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
       previous_status TEXT NOT NULL, previous_reference TEXT, before_expiry INTEGER,
       target_expiry INTEGER, client_id INTEGER, last_error TEXT
     );
-    CREATE UNIQUE INDEX IF NOT EXISTS billing_one_open_order
-      ON billing_orders(account) WHERE status <> 'paid';
+    CREATE TABLE IF NOT EXISTS billing_account_leases (
+      account TEXT PRIMARY KEY, token TEXT NOT NULL, lock_until INTEGER NOT NULL
+    );
   `);
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    if (!db.prepare('PRAGMA table_info(billing_orders)').all().some(c => c.name === 'source'))
+      db.exec("ALTER TABLE billing_orders ADD COLUMN source TEXT NOT NULL DEFAULT 'app'");
+    db.exec('DROP INDEX IF EXISTS billing_one_open_order');
+    if (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='web_checkouts'").get())
+      db.exec("UPDATE billing_orders SET source='web' WHERE id IN (SELECT order_id FROM web_checkouts WHERE order_id IS NOT NULL)");
+    // Existing APKs have no request key for a new purchase; keep their retry
+    // semantics while letting independent website checkouts coexist.
+    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS billing_one_open_app_order ON billing_orders(account) WHERE source='app' AND status<>'paid'");
+    db.exec('COMMIT');
+  } catch (error) { db.exec('ROLLBACK'); throw error; }
   const tx = work => {
     db.exec('BEGIN IMMEDIATE');
     try { const result = work(); db.exec('COMMIT'); return result; }
@@ -49,19 +62,21 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
     expiresAt: o.target_expiry, pendingSync: Boolean(o.pending_sync)
   }) : null;
   function latest(account) {
-    return publicOrder(db.prepare('SELECT * FROM billing_orders WHERE account=? ORDER BY created DESC, rowid DESC LIMIT 1').get(account));
+    return publicOrder(db.prepare("SELECT * FROM billing_orders WHERE account=? AND source='app' ORDER BY created DESC, rowid DESC LIMIT 1").get(account));
   }
-  async function create(account, plan = PLAN) {
+  async function create(account, plan = PLAN, { source = 'app' } = {}) {
     if (!validId(account)) throw new ApiError(400, 'invalid_id');
-    const existing = db.prepare("SELECT * FROM billing_orders WHERE account=? AND status<>'paid'").get(account);
+    if (!['app', 'web'].includes(source)) throw new ApiError(400, 'invalid_order_source');
+    const openApp = () => source === 'app' && db.prepare("SELECT * FROM billing_orders WHERE account=? AND source='app' AND status<>'paid'").get(account);
+    const existing = openApp();
     if (existing) return publicOrder(existing);
     renewalTarget(await panel.getClient(account), clock());
     return tx(() => {
-      const concurrent = db.prepare("SELECT * FROM billing_orders WHERE account=? AND status<>'paid'").get(account);
+      const concurrent = openApp();
       if (concurrent) return publicOrder(concurrent);
       const id = 'TL-' + randomBytes(12).toString('hex').toUpperCase();
-      db.prepare('INSERT INTO billing_orders(id,account,amount,days,created) VALUES(?,?,?,?,?)')
-        .run(id, account, plan.amountKopecks, plan.days, clock());
+      db.prepare('INSERT INTO billing_orders(id,account,amount,days,created,source) VALUES(?,?,?,?,?,?)')
+        .run(id, account, plan.amountKopecks, plan.days, clock(), source);
       return publicOrder(find(id));
     });
   }
@@ -88,17 +103,28 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
     if (active.has(id)) throw new ApiError(409, 'confirmation_in_progress');
     active.add(id);
     let claimed = false;
+    let lockedAccount;
+    const leaseToken = randomBytes(16).toString('hex');
     try {
       const order = tx(() => {
         const o = find(id);
         if (!o) throw new ApiError(404, 'order_not_found');
         if (o.status === 'paid') return o;
         if (o.lock_until > clock()) throw new ApiError(409, 'confirmation_in_progress');
+        // An ambiguous write must finish with its saved absolute target before
+        // any other purchase can calculate a later target for the same account.
+        if (db.prepare("SELECT id FROM billing_orders WHERE account=? AND id<>? AND status<>'paid' AND target_expiry IS NOT NULL").get(o.account, id))
+          throw new ApiError(409, 'account_confirmation_in_progress');
+        const lease = db.prepare(`INSERT INTO billing_account_leases(account,token,lock_until) VALUES(?,?,?)
+          ON CONFLICT(account) DO UPDATE SET token=excluded.token,lock_until=excluded.lock_until
+          WHERE billing_account_leases.lock_until<=?`).run(o.account, leaseToken, clock()+60000, clock());
+        if (!lease.changes) throw new ApiError(409, 'account_confirmation_in_progress');
         // Keep legacy references; new confirmations have a stable server-only order reference.
         const reference = o.reference ?? paymentReference ?? 'manual:' + o.id;
         db.prepare("UPDATE billing_orders SET reference=?,status='applying',lock_until=?,last_error=NULL WHERE id=?")
           .run(reference, clock() + 60000, id);
         claimed = true;
+        lockedAccount = o.account;
         return find(id);
       });
       if (order.status === 'paid') return publicOrder(order);
@@ -107,8 +133,13 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
         const target = renewalTarget(data, clock(), order.days);
         // Persist an absolute target BEFORE any remote mutation. A restart or timeout
         // always retries this same target, never adds another paid period.
-        db.prepare('UPDATE billing_orders SET before_expiry=?,target_expiry=?,client_id=? WHERE id=?')
-          .run(data.client.expiryTime, target, data.client.id, id);
+        tx(() => {
+          const lease = db.prepare('SELECT token,lock_until FROM billing_account_leases WHERE account=?').get(order.account);
+          if (!lease || lease.token !== leaseToken || lease.lock_until <= clock())
+            throw new ApiError(409, 'confirmation_in_progress');
+          db.prepare('UPDATE billing_orders SET before_expiry=?,target_expiry=?,client_id=? WHERE id=?')
+            .run(data.client.expiryTime, target, data.client.id, id);
+        });
       }
       const fixed = find(id);
       const result = await panel.setExpiry(fixed.account, fixed.before_expiry, fixed.target_expiry, fixed.client_id);
@@ -116,10 +147,15 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
         .run(clock(), result.pendingSync ? 1 : 0, id);
       return publicOrder(find(id));
     } catch (e) {
-      if (claimed) db.prepare("UPDATE billing_orders SET status='retry',lock_until=0,last_error=? WHERE id=?")
-        .run(e instanceof ApiError ? e.code : 'confirmation_failed', id);
+      if (claimed) db.prepare(`UPDATE billing_orders SET status='retry',lock_until=0,last_error=?
+        WHERE id=? AND status<>'paid' AND EXISTS
+        (SELECT 1 FROM billing_account_leases WHERE account=billing_orders.account AND token=?)`)
+        .run(e instanceof ApiError ? e.code : 'confirmation_failed', id, leaseToken);
       throw e;
-    } finally { active.delete(id); }
+    } finally {
+      if (lockedAccount) db.prepare('DELETE FROM billing_account_leases WHERE account=? AND token=?').run(lockedAccount, leaseToken);
+      active.delete(id);
+    }
   }
   async function reset(id) {
     if (providerInvoice(id)) throw new ApiError(409, 'provider_order_cannot_reset');
@@ -159,6 +195,7 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
   }
   return {
     plan: PLAN, instructions, create, latest, preview, confirm, reset,
+    get: (id, source) => { const row = find(id); return publicOrder(row && (!source || row.source === source) ? row : null); },
     list: () => db.prepare('SELECT * FROM billing_orders ORDER BY created DESC, rowid DESC LIMIT 100').all()
       .map(o => ({ ...publicOrder(o), provider: providerInvoice(o.id) ? 'lava' : null, reference: o.reference, error: o.last_error ?? providerInvoice(o.id)?.last_error })),
     close: () => db.close()
