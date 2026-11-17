@@ -33,6 +33,9 @@ data class MainUiState(
     val showPasswordDialog: Boolean = false,
     val authBusy: Boolean = false,
     val authError: Int? = null,
+    val accountAccess: com.v2ray.ang.handler.AccountAccess = com.v2ray.ang.handler.AccountAccess(),
+    val trialBusy: Boolean = false,
+    val trialError: Int? = null,
     val showTnglUpdateDialog: Boolean = false,
     val updateResult: com.v2ray.ang.dto.CheckUpdateResult? = null
 ) {
@@ -109,7 +112,9 @@ sealed interface MainAction {
     data object RefreshBilling : MainAction
     data object OpenBillingPayment : MainAction
     data object ChangeAccount : MainAction
-    data class SubmitTnglCredentials(val id: String, val password: String, val activationCode: String?) : MainAction
+    data class SubmitTnglCredentials(val id: String, val password: String, val activationCode: String?, val registration: Boolean = false) : MainAction
+    data object StartTrial : MainAction
+    data object RefreshAccount : MainAction
     data object ShowPasswordDialog : MainAction
     data object DismissPasswordDialog : MainAction
     data class ChangePassword(val current: String, val newPassword: String) : MainAction

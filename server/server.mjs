@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { createAuth, ApiError } from './auth.mjs';
 import { subscription } from './upstream.mjs';
-import { panel, billing, lava } from './billing-runtime.mjs';
+import { panel, billing, lava, membership } from './billing-runtime.mjs';
 import { LAVA_PLANS } from './lava.mjs';
 import { createWebBilling } from './web-billing.mjs';
 
@@ -40,7 +40,7 @@ async function json(req) {
     return value;
   } catch { throw new ApiError(400, 'invalid_json'); }
 }
-export function createApiServer({ authStore = auth, billingStore = billing, panelClient = panel, subscriptionReader = subscription, lavaStore = lava, webBillingStore = webBilling } = {}) {
+export function createApiServer({ authStore = auth, billingStore = billing, panelClient = panel, subscriptionReader = subscription, lavaStore = lava, webBillingStore = webBilling, membershipStore = membership } = {}) {
 const auth = authStore;
 return createServer(async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -81,6 +81,16 @@ return createServer(async (req, res) => {
       return reply(200, {ok:true});
     }
     const token = (req.headers.authorization ?? '').replace(/^Bearer /, '');
+    if (req.method === 'GET' && path === '/v1/account') {
+      const session=auth.session(token);
+      return reply(200,membershipStore ? await membershipStore.status(session.account) : {managed:false,trialAvailable:false});
+    }
+    if (req.method === 'POST' && path === '/v1/trial') {
+      const session=auth.session(token);
+      limit('trial:'+session.account,10);
+      if (!membershipStore) throw new ApiError(503,'registration_unavailable');
+      return reply(200,await membershipStore.startTrial(session.account));
+    }
     if (req.method === 'GET' && path === '/v1/billing') {
       const session = auth.session(token);
       if (!billingStore) throw new ApiError(503, 'billing_unavailable');
@@ -101,12 +111,14 @@ return createServer(async (req, res) => {
     }
     if (req.method === 'GET' && path === '/v1/subscription') {
       const session = auth.session(token);
+      const access = membershipStore ? await membershipStore.status(session.account) : null;
+      if (access?.managed && !access.subscribed) throw new ApiError(403,'subscription_inactive');
       const subId = panelClient ? (await panelClient.getClient(session.account)).client.subId : session.account;
       const sub = await subscriptionReader(base, subId);
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'subscription-userinfo': sub.info });
       return res.end(sub.body);
     }
-    if (req.method !== 'POST' || !['/v1/login', '/v1/activate', '/v1/password', '/v1/logout'].includes(path))
+    if (req.method !== 'POST' || !['/v1/register', '/v1/login', '/v1/activate', '/v1/password', '/v1/logout'].includes(path))
       throw new ApiError(404, 'not_found');
     const data = await json(req);
     if (path === '/v1/logout') { auth.logout(token); return reply(200, { ok: true }); }
@@ -115,6 +127,11 @@ return createServer(async (req, res) => {
     if (working >= 4) throw new ApiError(429, 'rate_limited');
     working++;
     try {
+      if (path === '/v1/register') {
+        limit('register:'+ip,5);
+        if (!membershipStore) throw new ApiError(503,'registration_unavailable');
+        return reply(200,await auth.register(data.id,data.password,membershipStore.provision));
+      }
       if (path === '/v1/password') {
         limit('password:' + auth.session(token).account, 10);
         await auth.changePassword(token, data.currentPassword, data.newPassword);

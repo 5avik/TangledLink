@@ -22,16 +22,12 @@ internal fun serverLabel(remarks: String): ServerLabel {
     val name = (if (flag == null) remarks else remarks.replace(flag, ""))
         .replace(whitespacePattern, " ").trim().trim('-', '·', '|', ':', '–', '—').trim()
     val numbered = numberedPattern.matchEntire(name)
-    val detail = if (numbered == null) name else {
-        val number = "№" + numbered.groupValues[1]
-        val suffix = numbered.groupValues[2].trim()
-        val transport = when (suffix.lowercase(Locale.ROOT)) {
-            "tcp" -> "TCP"
-            "grpc" -> "gRPC"
-            "xhttp" -> "XHTTP"
-            else -> suffix
-        }
-        if (transport.isEmpty()) number else "$number · $transport"
+    val suffix = numbered?.groupValues?.get(2)?.trim() ?: name
+    val detail = when (suffix.lowercase(Locale.ROOT)) {
+        "tcp" -> "TCP"
+        "grpc" -> "gRPC"
+        "xhttp" -> "XHTTP"
+        else -> suffix
     }
     return ServerLabel(flag, false, detail)
 }

@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { randomBytes, createHash, scrypt, timingSafeEqual } from 'node:crypto';
+import { randomBytes, randomUUID, createHash, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 
 const derive = promisify(scrypt);
@@ -25,8 +25,8 @@ const equalHash = (a, b) => {
 export function createAuth(path) {
   const db = new DatabaseSync(path);
   db.exec(`
-    PRAGMA journal_mode=WAL;
     PRAGMA busy_timeout=5000;
+    PRAGMA journal_mode=WAL;
     PRAGMA foreign_keys=ON;
     CREATE TABLE IF NOT EXISTS accounts (
       id TEXT PRIMARY KEY, salt TEXT, hash TEXT, version INTEGER NOT NULL DEFAULT 0,
@@ -37,6 +37,10 @@ export function createAuth(path) {
       expires INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS sessions_account ON sessions(account);
+    CREATE TABLE IF NOT EXISTS registrations (
+      account TEXT PRIMARY KEY REFERENCES accounts(id), uuid TEXT NOT NULL,
+      sub_id TEXT NOT NULL, ready INTEGER NOT NULL DEFAULT 0
+    );
   `);
   const account = id => db.prepare('SELECT * FROM accounts WHERE id = ?').get(id);
   const tx = work => {
@@ -82,6 +86,33 @@ export function createAuth(path) {
       return issue(id);
     });
   }
+  async function register(id, password, provision) {
+    if (typeof id !== 'string' || !/^[a-z0-9_-]{3,32}$/.test(id))
+      throw new ApiError(400, 'registration_invalid_id');
+    checkPassword(password);
+    const initial = account(id);
+    const salt = initial?.salt ?? secret(), hash = await passwordHash(password, salt);
+    const record = tx(() => {
+      const existing = db.prepare('SELECT * FROM accounts WHERE lower(id)=lower(?)').get(id);
+      if (existing) {
+        const pending = db.prepare('SELECT * FROM registrations WHERE account=? AND ready=0').get(id);
+        if (!pending || !existing.hash || !equalHash(hash, existing.hash))
+          throw new ApiError(409, 'account_exists');
+        return pending;
+      }
+      db.prepare('INSERT INTO accounts(id,salt,hash) VALUES(?,?,?)').run(id,salt,hash);
+      db.prepare('INSERT INTO registrations(account,uuid,sub_id) VALUES(?,?,?)')
+        .run(id,randomUUID(),secret());
+      return db.prepare('SELECT * FROM registrations WHERE account=?').get(id);
+    });
+    await provision(id, {uuid:record.uuid, subId:record.sub_id});
+    return tx(() => {
+      const current = account(id);
+      if (!current?.hash || !equalHash(hash,current.hash)) throw new ApiError(409,'account_exists');
+      db.prepare('UPDATE registrations SET ready=1 WHERE account=?').run(id);
+      return issue(id);
+    });
+  }
   async function login(id, password, verifySubscription = async () => {}) {
     const row = validId(id) ? account(id) : null;
     // Do password work for unknown IDs as well.
@@ -89,6 +120,8 @@ export function createAuth(path) {
     const hash = await passwordHash(bounded, row?.salt ?? 'unknown-account-fixed-salt');
     if (!row?.hash || !equalHash(hash, row.hash))
       throw new ApiError(401, 'invalid_credentials');
+    if (db.prepare('SELECT 1 FROM registrations WHERE account=? AND ready=0').get(id))
+      throw new ApiError(409, 'registration_pending');
     await verifySubscription();
     return tx(() => {
       if (account(id)?.version !== row.version) throw new ApiError(401, 'invalid_credentials');
@@ -132,7 +165,7 @@ export function createAuth(path) {
     if (!account(id)) throw new ApiError(404, 'not_found');
     return db.prepare('DELETE FROM sessions WHERE account=?').run(id).changes;
   }
-  return { invite, activate, login, session, changePassword, listAccounts, revokeSessions,
+  return { register, invite, activate, login, session, changePassword, listAccounts, revokeSessions,
     logout(token) { db.prepare('DELETE FROM sessions WHERE hash=?').run(digest(token)); },
     close() { db.close(); } };
 }

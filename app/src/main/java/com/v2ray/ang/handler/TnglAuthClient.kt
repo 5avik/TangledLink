@@ -11,6 +11,8 @@ import java.util.concurrent.TimeUnit
 
 class TnglAuthException(val errorCode: String) : IOException(errorCode)
 
+data class AccountAccess(val managed:Boolean=false,val subscribed:Boolean=false,val trialAvailable:Boolean=false)
+
 object TnglAuthClient {
     const val BASE_URL = "https://auth.tngl.pro:8443"
     const val SUBSCRIPTION_URL = "$BASE_URL/v1/subscription"
@@ -36,6 +38,24 @@ object TnglAuthClient {
         } else "/v1/login"
         val response = post(path, body)
         TnglSessionStore.save(response.getString("token"), response.getLong("expiresAt"))
+    }
+    fun register(id: String, password: String) {
+        val response = post("/v1/register", JSONObject().put("id",id).put("password",password))
+        TnglSessionStore.save(response.getString("token"),response.getLong("expiresAt"))
+    }
+    fun accountStatus(token: String = TnglSessionStore.token() ?: throw TnglAuthException("session_expired")): AccountAccess {
+        val request = Request.Builder().url(BASE_URL + "/v1/account").header("Authorization","Bearer $token").build()
+        client.newCall(request).execute().use { response ->
+            // Older backend keeps the legacy client behavior until server deployment.
+            if (response.code == 404) return AccountAccess()
+            val data = runCatching { JSONObject(response.body?.string().orEmpty()) }.getOrNull()
+            if (!response.isSuccessful) throw TnglAuthException(data?.optString("error") ?: "server_error")
+            return AccountAccess(data?.optBoolean("managed") == true,
+                data?.optBoolean("subscribed") == true,data?.optBoolean("trialAvailable") == true)
+        }
+    }
+    fun startTrial(token: String = TnglSessionStore.token() ?: throw TnglAuthException("session_expired")) {
+        post("/v1/trial",JSONObject(),token)
     }
     fun changePassword(current: String, newPassword: String) {
         val token = TnglSessionStore.token() ?: throw TnglAuthException("session_expired")

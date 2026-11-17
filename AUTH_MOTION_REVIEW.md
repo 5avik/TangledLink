@@ -1,0 +1,11 @@
+# Authorization Canvas background
+
+Created ui/compose/TangledAnimatedBackground.kt and integrated it behind the existing form in ui/main/TnglAuthDialogs.kt. No credential, API, navigation or persistence operations were changed. Registration was disabled during the motion change and is now implemented separately (see server/REGISTRATION.md).
+
+Two 7x49 dot bands, thin edge paths, 28 deterministic particles and cached radial brushes. A 24-second periodic phase updates drawing at most once per 33.333 ms; actual display scheduling may yield fewer than 30 updates/sec. Path, color array, brushes and particle parameters are cached. Phase reads occur in drawing, not form composition. Small value objects and trigonometry remain in drawing; this is not an allocation-free implementation.
+
+Uses existing sceneMotionAllowed policy: actual lifecycle RESUMED, route visibility, interactive display, reduce-effects preference, animator scale and power-save. Disabled motion cancels the frame coroutine and renders phase zero. No video, GIF, additional dependency, permission, service or decoder. Intensity and colors are configurable. Background stays outside IME-padded form. Local dark Material colors keep form labels readable on this dark scene even under a light app theme.
+
+Validation: installPlaystoreDebug and installPlaystoreDebugAndroidTest succeeded on Medium Phone emulator-5554. Three TnglLoginDialogTest cases passed with LocalReduceEffects=true: login submission, activation code submission, disabled registration. Submission scrolls after password entry with IME. Initial animation-enabled component test hit Compose idling timeout; form tests explicitly use the static mode. An emulator screenshot confirmed the decorative scene and revealed light-theme contrast, corrected in the final build. git diff --check passed.
+
+Not run: final animated screenshot comparison, measured frame pacing/CPU/GPU/battery, leak profiling, explicit lifecycle/background-resume playback verification, power-save/system-scale toggles, all screen sizes/orientations/large text, recreation, keyboard/D-pad/TalkBack traversal, live backend login. Lifecycle cancellation is implemented but not claimed as runtime-verified. Existing signed-in account data was preserved.

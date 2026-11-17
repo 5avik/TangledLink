@@ -10,10 +10,10 @@ class ServerLabelTest {
         ServerRowUiModel(id, ProfileItem(configType=EConfigType.VLESS, remarks=name), name, "", "", ping, "")
 
     @Test fun countryRowsUseTheSameNumberAndTransportFormat() {
-        assertEquals(ServerLabel("🇷🇴",false,"№3 · gRPC"),serverLabel("🇷🇴 №3 gRPC"))
-        assertEquals(ServerLabel("🇬🇧",false,"№1 · TCP"),serverLabel(" 🇬🇧  № 1 tcp "))
-        assertEquals(ServerLabel("🇳🇱",false,"№7 · XHTTP"),serverLabel("🇳🇱 # 7 - xhttp"))
-        assertEquals(ServerLabel("🇩🇪",false,"№8"),serverLabel("🇩🇪 №8"))
+        assertEquals(ServerLabel("🇷🇴",false,"gRPC"),serverLabel("🇷🇴 №3 gRPC"))
+        assertEquals(ServerLabel("🇬🇧",false,"TCP"),serverLabel(" 🇬🇧  № 1 tcp "))
+        assertEquals(ServerLabel("🇳🇱",false,"XHTTP"),serverLabel("🇳🇱 # 7 - xhttp"))
+        assertEquals(ServerLabel("🇩🇪",false,""),serverLabel("🇩🇪 №8"))
         assertEquals(ServerLabel("🇫🇷",false,"Paris"),serverLabel("🇫🇷 Paris"))
     }
 
@@ -54,7 +54,7 @@ class ServerLabelTest {
         fun search(query:String,filter:Int=0)=filterPremiumServers(rows,
             PremiumBrowserInput(query,filter),setOf("ro"),countries).map {it.guid}
         assertEquals(listOf("ro","slow"),search("румы"))
-        assertEquals(listOf("ro"),search("№3 · gRPC"))
+        assertEquals(listOf("ro"),search("gRPC"))
         assertEquals(listOf("uk"),search("🇬🇧"))
         assertEquals(listOf("auto"),search("автовыбор"))
         assertEquals(listOf("ro"),search("Румыния",1))

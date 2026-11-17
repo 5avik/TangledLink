@@ -50,6 +50,8 @@ internal fun PremiumShell(vm: MainViewModel, action: (MainAction)->Unit, navigat
                     connectionEnabled=state.connectionActionAvailable(connectionTarget!=null))
                 "servers", "serverPicker" -> if (terminalMode && route == "servers")
                     com.v2ray.ang.ui.terminal.TerminalToolsScreen(terminalState, vm.terminal, action, padding, bottomClearance)
+                else if (state.accountAccess.managed && !state.accountAccess.subscribed)
+                    RegistrationAccessScreen(state, action, padding, bottomClearance)
                 else ServersScreen(group.rows, browserInput, browser, loading,
                     {action(MainAction.SearchPremiumServers(it))}, {action(MainAction.FilterPremiumServers(it))},
                     state.selectedGuid, prefs.favorites, {action(MainAction.SelectServer(it))},

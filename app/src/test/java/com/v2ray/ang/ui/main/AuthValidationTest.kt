@@ -17,6 +17,15 @@ class AuthValidationTest {
         assertEquals(R.string.auth_password_policy, AuthValidation.credentials("example123", "short", "code"))
         assertEquals(R.string.auth_password_policy, AuthValidation.credentials("example123", "x".repeat(129), null))
     }
+    @Test fun registration() {
+        assertNull(AuthValidation.registration(" new_user-1 ", "password1234"))
+        assertEquals(R.string.auth_required, AuthValidation.registration("", "password1234"))
+        assertEquals(R.string.auth_required, AuthValidation.registration("user", ""))
+        for (id in listOf("ABCD", "ab", "a".repeat(33), "../user", "a@b"))
+            assertEquals(R.string.registration_id_rule, AuthValidation.registration(id,"password1234"))
+        assertEquals(R.string.auth_password_policy, AuthValidation.registration("user","short"))
+        assertEquals(R.string.auth_password_policy, AuthValidation.registration("user","a".repeat(129)))
+    }
     @Test fun passwordChange() {
         assertNull(AuthValidation.passwordChange("previous-password", "new-password"))
         assertEquals(R.string.auth_required, AuthValidation.passwordChange("", "new-password"))

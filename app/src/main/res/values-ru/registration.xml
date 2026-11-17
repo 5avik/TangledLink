@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="registration_exists">Этот логин уже занят.</string>
+    <string name="registration_id_rule">Логин: 3–32 символа — строчные латинские буквы, цифры, знак _ или дефис. Пароль: 12–128 символов.</string>
+    <string name="registration_retry">Регистрация не завершена. Откройте регистрацию и повторите запрос с тем же логином и паролем.</string>
+    <string name="registration_trial_unavailable">Пробный период недоступен или уже использован.</string>
+    <string name="registration_submit">Создать аккаунт</string>
+    <string name="registration_no_subscription">Подписка не приобретена</string>
+    <string name="registration_trial_help">Попробуйте подписку на 30 дней. Период начнётся после активации и доступен один раз на аккаунт.</string>
+    <string name="registration_trial_start">Попробовать 30 дней</string>
+    <string name="registration_buy">Приобрести подписку</string>
+</resources>

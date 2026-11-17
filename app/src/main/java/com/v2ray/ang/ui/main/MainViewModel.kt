@@ -107,7 +107,7 @@ class MainViewModel(
     )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
     private val billing = BillingController(viewModelScope, ioDispatcher,
-        com.v2ray.ang.handler.TnglBillingClient, onPaid = { updateTnglSubscription() })
+        com.v2ray.ang.handler.TnglBillingClient, onPaid = { refreshAccountAccess(); updateTnglSubscription() })
     private val premiumStore = PremiumStore(application)
     internal val premiumState = premiumStore.state.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PremiumPreferences())
     private val browserInput = MutableStateFlow(PremiumBrowserInput())
@@ -334,7 +334,9 @@ class MainViewModel(
             MainAction.RemoveDuplicateServers -> removeDuplicateServerAsync()
             MainAction.RemoveInvalidServers -> removeInvalidServerAsync()
             MainAction.SortByTestResults -> sortByTestResultsAsync()
-            MainAction.UpdateSubscriptions -> updateTnglSubscription()
+            MainAction.UpdateSubscriptions -> { refreshAccountAccess(); updateTnglSubscription() }
+            MainAction.StartTrial -> startTrial()
+            MainAction.RefreshAccount -> refreshAccountAccess()
             is MainAction.UpdateGroupSubscription -> updateTnglSubscription()
             MainAction.ChangeAccount -> changeAccount()
             is MainAction.SubmitTnglCredentials -> submitCredentials(action)
@@ -412,6 +414,7 @@ class MainViewModel(
 
     // ---------- Initialization ----------
     fun initialize() {
+        refreshAccountAccess()
         viewModelScope.launch(preloadDispatcher) {
             try {
                 initialPageReady.await()
@@ -643,6 +646,10 @@ class MainViewModel(
     }
 
     private fun authMessage(error: Exception): Int = when ((error as? TnglAuthException)?.errorCode) {
+        "account_exists" -> R.string.registration_exists
+        "registration_invalid_id" -> R.string.registration_id_rule
+        "registration_pending" -> R.string.registration_retry
+        "trial_unavailable" -> R.string.registration_trial_unavailable
         "invalid_credentials" -> R.string.auth_invalid_credentials
         "session_expired" -> R.string.auth_session_expired
         "subscription_inactive" -> R.string.auth_subscription_inactive
@@ -651,9 +658,39 @@ class MainViewModel(
         else -> R.string.auth_server_error
     }
 
+    private fun refreshAccountAccess() {
+        val token = TnglSessionStore.token() ?: return
+        viewModelScope.launch {
+            try {
+                val access = withContext(ioDispatcher) { TnglAuthClient.accountStatus(token) }
+                if (TnglSessionStore.token() == token) _uiState.update { it.copy(accountAccess=access,trialError=null) }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) { _uiState.update { it.copy(trialError=authMessage(error)) } }
+        }
+    }
+
+    private fun startTrial() {
+        if (uiState.value.trialBusy) return
+        val token = TnglSessionStore.token() ?: return
+        _uiState.update { it.copy(trialBusy=true,trialError=null) }
+        viewModelScope.launch {
+            try {
+                withContext(ioDispatcher) { TnglAuthClient.startTrial(token) }
+                val access = withContext(ioDispatcher) { TnglAuthClient.accountStatus(token) }
+                if (TnglSessionStore.token() == token) {
+                    _uiState.update { it.copy(accountAccess=access) }
+                    updateTnglSubscription()
+                }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) { _uiState.update { it.copy(trialError=authMessage(error)) } }
+            finally { _uiState.update { it.copy(trialBusy=false) } }
+        }
+    }
+
     private fun submitCredentials(action: MainAction.SubmitTnglCredentials) {
         if (uiState.value.authBusy) return
-        val validation = AuthValidation.credentials(action.id, action.password, action.activationCode)
+        val validation = if (action.registration) AuthValidation.registration(action.id, action.password)
+            else AuthValidation.credentials(action.id, action.password, action.activationCode)
         if (validation != null) {
             _uiState.update { it.copy(authError = validation) }
             return
@@ -662,7 +699,8 @@ class MainViewModel(
         viewModelScope.launch {
             try {
                 withContext(ioDispatcher) {
-                    TnglAuthClient.login(action.id.trim(), action.password, action.activationCode?.trim())
+                    if (action.registration) TnglAuthClient.register(action.id.trim(), action.password)
+                    else TnglAuthClient.login(action.id.trim(), action.password, action.activationCode?.trim())
                     MmkvManager.setTnglUserToken(null)
                     val subItem = SubscriptionItem(
                         remarks = action.id.trim(),
@@ -678,7 +716,8 @@ class MainViewModel(
                     val servers = dataSource.getServerGuidList(AppConfig.TNGL_SUB_ID)
                     if (dataSource.getSelectServer() !in servers) servers.firstOrNull()?.let(dataSource::setSelectServer)
                 }
-                _uiState.update { it.copy(showTnglLoginDialog = false) }
+                val access = withContext(ioDispatcher) { runCatching { TnglAuthClient.accountStatus() }.getOrDefault(com.v2ray.ang.handler.AccountAccess()) }
+                _uiState.update { it.copy(showTnglLoginDialog = false, accountAccess = access) }
                 if (billingReturnPending) {
                     billingReturnPending = false
                     billing.returnFromPayment()

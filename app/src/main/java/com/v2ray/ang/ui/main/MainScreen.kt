@@ -12,10 +12,12 @@ fun MainScreen(
 ) {
     val state by mainViewModel.uiState.collectAsStateWithLifecycle()
     PremiumTheme {
-        PremiumShell(mainViewModel, onAction, onNavigate)
         if (state.showTnglLoginDialog) {
             TnglLoginDialog(busy=state.authBusy,error=state.authError,
+                onRegister={id,password->onAction(MainAction.SubmitTnglCredentials(id,password,null,registration=true))},
                 onConfirm={id,password,code->onAction(MainAction.SubmitTnglCredentials(id,password,code))})
+        } else {
+            PremiumShell(mainViewModel, onAction, onNavigate)
         }
         if (state.showPasswordDialog) {
             TnglPasswordDialog(busy=state.authBusy,error=state.authError,

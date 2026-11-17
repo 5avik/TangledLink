@@ -129,7 +129,7 @@ export function createBilling({ path, panel, instructions, clock = Date.now }) {
       });
       if (order.status === 'paid') return publicOrder(order);
       if (order.target_expiry == null) {
-        const data = await panel.getClient(order.account);
+        const data = await (panel.prepareRenewal ? panel.prepareRenewal(order.account) : panel.getClient(order.account));
         const target = renewalTarget(data, clock(), order.days);
         // Persist an absolute target BEFORE any remote mutation. A restart or timeout
         // always retries this same target, never adds another paid period.

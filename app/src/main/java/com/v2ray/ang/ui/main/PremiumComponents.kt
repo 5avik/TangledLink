@@ -55,7 +55,7 @@ internal fun ServerCard(row:ServerRowUiModel,selected:Boolean,favorite:Boolean,o
                 Box(contentAlignment=Alignment.Center) {
                     if (label.countryFlag != null) Text(label.countryFlag,fontSize=24.sp)
                     else Icon(androidx.compose.ui.res.painterResource(
-                        if(label.automatic) R.drawable.ic_refresh_24dp else R.drawable.ic_premium_servers),
+                        if(label.automatic) R.drawable.ic_server_auto_24dp else R.drawable.ic_premium_servers),
                         contentDescription=null,modifier=Modifier.size(24.dp),tint=accent)
                 }
             }

@@ -79,8 +79,9 @@ class ServerCardLabelsTest {
     }
 
     private fun assertLabels() {
-        compose.onNodeWithText("№1 · TCP").assertExists()
-        compose.onNodeWithText("№3 · gRPC").assertExists()
+        compose.onNodeWithText("TCP").assertExists()
+        compose.onNodeWithText("gRPC").assertExists()
+        compose.onNodeWithText("№",substring=true).assertDoesNotExist()
         compose.onNodeWithText(label(R.string.premium_auto_select_note)).assertExists()
         compose.onNodeWithText("🇬🇧 №1 TCP").assertDoesNotExist()
         compose.onNodeWithText("🇷🇴 №3 gRPC").assertDoesNotExist()
