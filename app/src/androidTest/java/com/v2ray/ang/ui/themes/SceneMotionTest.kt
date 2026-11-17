@@ -21,17 +21,23 @@ class SceneMotionTest {
             override val lifecycle: Lifecycle get() = registry
         }
         val reduce = mutableStateOf(false)
+        val visible = mutableStateOf(true)
         var allowed = false
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val systemEnabled = Settings.Global.getFloat(context.contentResolver,
             Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
         compose.setContent {
-            CompositionLocalProvider(LocalLifecycleOwner provides owner, LocalReduceEffects provides reduce.value) {
+            CompositionLocalProvider(LocalLifecycleOwner provides owner, LocalReduceEffects provides reduce.value,
+                com.v2ray.ang.ui.compose.LocalMotionVisible provides visible.value) {
                 val animate = sceneMotionAllowed()
                 SideEffect { allowed = animate }
             }
         }
         compose.runOnIdle { owner.registry.currentState = Lifecycle.State.RESUMED }
+        compose.waitForIdle()
+        compose.runOnIdle { assertEquals(systemEnabled, allowed); visible.value = false }
+        compose.waitForIdle()
+        compose.runOnIdle { assertFalse(allowed); visible.value = true }
         compose.waitForIdle()
         compose.runOnIdle { assertEquals(systemEnabled, allowed); reduce.value = true }
         compose.waitForIdle()

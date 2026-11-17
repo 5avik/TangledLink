@@ -91,8 +91,8 @@ android {
         applicationId = "pro.tngl"
         minSdk = 24
         targetSdk = 37
-        versionCode = 16
-        versionName = "0.9.7-test"
+        versionCode = 17
+        versionName = "0.9.8-test"
 
         val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(';')
         splits {
@@ -216,6 +216,8 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
+    // Local decorative video only; no session, controls or background playback.
+    implementation(libs.androidx.media3.exoplayer)
     implementation("androidx.navigation:navigation-compose:2.10.2")
     implementation("androidx.datastore:datastore-preferences:1.3.0")
 

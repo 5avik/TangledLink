@@ -6,11 +6,12 @@ import com.v2ray.ang.ui.compose.*
 import com.v2ray.ang.ui.main.*
 
 class ConnectionRequestGate {
- private var target: Boolean? = null
- val pending get() = target != null
- fun acquire(running:Boolean):Boolean {if(pending)return false;target=!running;return true}
- fun observed(running:Boolean) {if(target==running)target=null}
- fun finished() {target=null}
+ private val target = MutableStateFlow<Boolean?>(null)
+ val targetState: StateFlow<Boolean?> = target.asStateFlow()
+ val pending get() = target.value != null
+ fun acquire(running:Boolean):Boolean = target.compareAndSet(null,!running)
+ fun observed(running:Boolean) {target.compareAndSet(running,null)}
+ fun finished() {target.value=null}
 }
 data class TerminalState(val page:String="console",val input:String="",val lines:List<String> = emptyList(),
  val history:List<String> = emptyList(),val cursor:Int=0,val events:List<String> = emptyList(),val saving:Boolean=false)

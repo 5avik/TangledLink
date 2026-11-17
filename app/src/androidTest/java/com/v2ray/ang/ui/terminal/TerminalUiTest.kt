@@ -28,8 +28,8 @@ class TerminalUiTest {
    compose.setContent{
     DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(if(wide.value)DpSize(640.dp,360.dp)else DpSize(320.dp,568.dp)) then DeviceConfigurationOverride.FontScale(1.6f)){
      AppTheme(darkTheme=dark.value){
-      FloatingNavigationLayout("home",{} ){padding,bottom->
-       TerminalHome(MainUiState(),null,{}, {},{}, {opens++},padding,bottom)
+      FloatingNavigationLayout("home",{if(it=="servers") opens++} ){padding,bottom->
+       TerminalHome(MainUiState(),null,{}, {},{},padding,bottom)
       }
      }
     }
@@ -38,7 +38,9 @@ class TerminalUiTest {
     runBlocking(Dispatchers.IO){ThemeManager.saveAppearance(AppearanceSelection(ThemeId.Terminal,false,p));ThemeManager.setDynamicColorEnabled(dyn)}
     compose.runOnIdle{dark.value=d;wide.value=dyn}
     compose.onNodeWithText(label(R.string.terminal_disconnected)).performScrollTo().assertIsDisplayed()
-    compose.onNodeWithText(label(R.string.terminal_console_title)).performScrollTo().performClick()
+    compose.onNodeWithText(label(R.string.terminal_console_title)).assertIsDisplayed().performClick()
+    compose.onNodeWithText(label(R.string.terminal_neofetch_title)).assertDoesNotExist()
+    compose.onNodeWithText(label(R.string.terminal_logs_title)).assertDoesNotExist()
    }
    compose.runOnIdle{assertEquals(16,opens)}
  }
@@ -56,7 +58,7 @@ class TerminalUiTest {
     runBlocking(Dispatchers.IO){ThemeManager.saveAppearance(AppearanceSelection(ThemeId.Terminal,true))}
     compose.setContent{AppTheme{
      val state by handler.state.collectAsStateWithLifecycle()
-     TerminalToolsScreen(state,handler,dispatch,{},PaddingValues(),0.dp)
+     TerminalToolsScreen(state,handler,dispatch,PaddingValues(),0.dp)
     }}
     val field=compose.onNodeWithText(label(R.string.terminal_command_hint))
     field.performScrollTo().performTextInput("help")

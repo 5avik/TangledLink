@@ -158,11 +158,42 @@ rate limits before opening this prototype to a large audience.
 
 ## Access boundary and migration
 
-Without XUI configuration this backend checks available subscription configs and traffic/expiry headers.
-With XUI configured it looks up the client by exact account/email, resolves the actual subId,
-and allows authenticated account access for renewal even after VPN expiry. Configuration access
-still requires an active upstream subscription. Session revocation alone does not revoke downloaded
-VPN configurations; disabling/rotating clients is a separate operation.
+First activation verifies an existing subscription through XUI (by exact account/email) or,
+without XUI configuration, the subscription reader. Subsequent login verifies the activated
+local account and password without contacting XUI. A panel outage or expired panel certificate
+must not lock users out of their app accounts. This does not bypass subscription access checks:
+configuration and renewal operations still resolve the current XUI client by exact account/email,
+and configuration access still requires an active upstream subscription. Session revocation alone
+does not revoke downloaded VPN configurations; disabling/rotating clients is a separate operation.
+
+If /health succeeds but configuration or renewal returns panel_unavailable, check the panel's
+HTTPS certificate and renewal schedule. Health only checks the authentication process.
+Do not disable TLS verification to work around an expired certificate.
+
+### TLS names and certificate renewal
+
+The panel API and public subscription server can use different certificates.
+An IP-only certificate used by XUI_URL does not cover the tngl.pro hostname in
+SUBSCRIPTION_BASE. Keep the panel IP certificate in webCertFile/webKeyFile,
+and configure subCertFile/subKeyFile with the certificate covering tngl.pro.
+The deployed subscription certificate is managed by Certbot under
+/etc/letsencrypt/live/tngl.pro/, using the existing Nginx webroot /var/www/html.
+
+For 3x-ui **3.11.0**, SIGHUP reloads the panel/subscription listeners through
+StopPanelOnly/StartPanelOnly while retaining Xray. This is different from a full
+systemctl restart. See [the version's signal handler](https://github.com/MHSanaei/3x-ui/blob/v3.11.0/main.go#L164).
+Install the supplied deploy hook for domain certificate renewal:
+
+```bash
+install -o root -g root -m 755 /opt/tngl-auth/tngl-subscription-cert-deploy.sh /etc/letsencrypt/renewal-hooks/deploy/tngl-subscription-reload
+certbot renew --cert-name tngl.pro --dry-run --no-random-sleep-on-renew
+```
+
+The hook handles only the tngl.pro lineage and signals only the x-ui main process.
+The separate IP certificate uses acme.sh: its saved webroot must match Nginx
+(/var/www/html), rather than standalone mode competing for port 80. Its reload
+command is systemctl kill --kill-who=main --signal=HUP x-ui.service.
+Review this signal behavior again before upgrading 3x-ui.
 
 The old public /tnglsubs/ID endpoint still grants access by ID until protected on the
 server. This prototype therefore adds app authentication but is NOT an exclusive

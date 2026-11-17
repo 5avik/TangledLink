@@ -1,0 +1,4 @@
+Motion math: 33379 checks passed
+
+All three Kotlin files compiled with Kotlin + Compose compiler 2.4.21 against cached Android/Compose dependencies from the inspected project and Android SDK 37. JVM target 17, Java 21. No compiler warnings.
+This is source compilation, not a full Gradle/APK build or device/UI/VPN test.

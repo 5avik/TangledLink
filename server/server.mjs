@@ -120,10 +120,11 @@ return createServer(async (req, res) => {
         await auth.changePassword(token, data.currentPassword, data.newPassword);
         return reply(200, { ok: true });
       }
-      // Verify subscription before committing activation or issuing a session.
+      // Activated accounts authenticate locally even while the control panel is down.
+      // First activation and protected config/billing operations still verify the panel.
       const verify = () => panelClient ? panelClient.getClient(data.id) : subscriptionReader(base, data.id);
       const session = path === '/v1/login'
-        ? await auth.login(data.id, data.password, verify)
+        ? await auth.login(data.id, data.password)
         : await auth.activate(data.id, data.code, data.password, verify);
       reply(200, session);
     } finally { working--; }

@@ -30,13 +30,15 @@ import com.v2ray.ang.ui.compose.ThemedBackground
 internal fun FloatingNavigationLayout(
     selected: String,
     onSelect: (String) -> Unit,
+    terminalConsole: Boolean = false,
     content: @Composable (PaddingValues, Dp) -> Unit,
 ) {
     var barHeightPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val direction = LocalLayoutDirection.current
     val fallback = 92.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val clearance = if (barHeightPx > 0) with(density) { barHeightPx.toDp() } else fallback
+    val showBar = !terminalConsole || WindowInsets.ime.getBottom(density) == 0
+    val clearance = if (!showBar) 12.dp else if (barHeightPx > 0) with(density) { barHeightPx.toDp() } else fallback
     val reservedPixels = with(density) { clearance.toPx() }
     val reservedTopPixels = WindowInsets.safeDrawing.getTop(density).toFloat()
     val focusScrolling = remember(reservedPixels, reservedTopPixels) {
@@ -57,13 +59,15 @@ internal fun FloatingNavigationLayout(
     SideEffect {
         (view.context as? android.app.Activity)?.window?.let { window ->
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !sceneVisible && !dark
-                isAppearanceLightNavigationBars = !sceneVisible && !dark
+                isAppearanceLightStatusBars = !sceneVisible && !terminalConsole && !dark
+                isAppearanceLightNavigationBars = !sceneVisible && !terminalConsole && !dark
             }
         }
     }
+    // Console and its navigation use the same paired terminal surface, including in light mode.
+    MaterialTheme(colorScheme=if(terminalConsole) config.dark else MaterialTheme.colorScheme) {
     Box(Modifier.fillMaxSize()) {
-        if (sceneVisible) ThemedBackground(Modifier.fillMaxSize(), config)
+        if (sceneVisible) ThemedBackground(Modifier.fillMaxSize(), config, animated=true)
         Scaffold(
             containerColor = if (sceneVisible) Color.Transparent else MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
@@ -72,6 +76,7 @@ internal fun FloatingNavigationLayout(
                 CompositionLocalProvider(LocalBringIntoViewSpec provides focusScrolling) {
                     content(insets, clearance)
                 }
+                if (showBar) {
                 Box(
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                         .height(clearance)
@@ -86,8 +91,10 @@ internal fun FloatingNavigationLayout(
                 ) {
                     BottomNavigationBar(selected, onSelect)
                 }
+                }
             }
         }
+    }
     }
 }
 

@@ -39,7 +39,7 @@ class PremiumNavigationTest {
     @Composable private fun Fixture() {
         inputMode = LocalInputModeManager.current
         PremiumTheme {
-            PremiumTabNavigation(sequence.longValue) { route, selectTab, padding, clearance ->
+            PremiumTabNavigation(sequence.longValue) { route, selectTab, _, padding, clearance ->
                 Box(Modifier.fillMaxSize().testTag("page_$route")) {
                     when (route) {
                         "home" -> HomeScreen(ConnectionStatus.Disconnected, if(hasServer.value) server else null,

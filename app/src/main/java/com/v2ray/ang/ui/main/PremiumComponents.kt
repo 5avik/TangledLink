@@ -16,6 +16,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.*
 import com.v2ray.ang.R
+import com.v2ray.ang.ui.compose.LocalThemeConfig
 
 /** The global AppTheme owns palette and typography on every screen. */
 @Composable
@@ -171,13 +172,19 @@ internal fun SettingsToggle(title:String, subtitle:String, checked:Boolean, onCh
 @Composable
 internal fun BottomNavigationBar(selected:String,onSelect:(String)->Unit) {
     val routes=listOf("home","servers","subscription","more")
-    val labels=listOf(R.string.premium_home,R.string.premium_servers,R.string.premium_subscription,R.string.premium_more)
+    val terminal = LocalThemeConfig.current.id == com.v2ray.ang.ui.compose.ThemeId.Terminal
+    val labels=listOf(R.string.premium_home,if(terminal) R.string.terminal_console_title else R.string.premium_servers,
+        R.string.premium_subscription,R.string.premium_more)
     val icons=listOf(R.drawable.ic_premium_home,R.drawable.ic_premium_servers,R.drawable.ic_subscriptions_24dp,R.drawable.ic_menu_24dp)
     Surface(Modifier.navigationBarsPadding().padding(horizontal=16.dp,vertical=10.dp),shape=RoundedCornerShape(26.dp),
         color=MaterialTheme.colorScheme.surface.copy(alpha=.94f),shadowElevation=12.dp,border=BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
         Row(Modifier.widthIn(max=640.dp).fillMaxWidth().heightIn(min=72.dp)) {
             routes.forEachIndexed { i,route ->
-                NavigationBarItem(selected==route,{onSelect(route)},icon={Icon(androidx.compose.ui.res.painterResource(icons[i]),null,Modifier.size(24.dp))},
+                NavigationBarItem(selected==route,{onSelect(route)},icon={
+                    if(terminal && i==1) Text(">_",fontFamily=com.v2ray.ang.ui.terminal.TerminalFont,
+                        modifier=Modifier.clearAndSetSemantics {})
+                    else Icon(androidx.compose.ui.res.painterResource(icons[i]),null,Modifier.size(24.dp))
+                },
                     label={Text(stringResource(labels[i]),maxLines=2,textAlign=androidx.compose.ui.text.style.TextAlign.Center)},colors=NavigationBarItemDefaults.colors(
                         selectedIconColor=MaterialTheme.colorScheme.primary,selectedTextColor=MaterialTheme.colorScheme.primary,
                         indicatorColor=Color.Transparent),modifier=Modifier.weight(1f))

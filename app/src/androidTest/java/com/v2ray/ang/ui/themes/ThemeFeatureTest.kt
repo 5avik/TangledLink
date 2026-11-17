@@ -83,7 +83,7 @@ class ThemeFeatureTest {
                 }
             }
         }
-        for (id in ThemeId.entries) for (isDark in listOf(false, true))
+        for (id in ThemeId.entries.filter {it!=ThemeId.Terminal}) for (isDark in listOf(false, true))
             for (dynamic in listOf(false, true)) for (isWide in listOf(false, true)) {
                 dynamicExpected = dynamic
                 runBlocking(Dispatchers.IO) { ThemeManager.setDynamicColorEnabled(dynamic) }
@@ -105,9 +105,9 @@ class ThemeFeatureTest {
                 compose.onNodeWithContentDescription(label(R.string.premium_settings)).performScrollTo().performClick()
             }
         compose.runOnIdle {
-            assertEquals(ThemeId.entries.size * 8, connects)
-            assertEquals(ThemeId.entries.size * 8, serverClicks)
-            assertEquals(ThemeId.entries.size * 8, settingsClicks)
+            assertEquals((ThemeId.entries.size-1) * 8, connects)
+            assertEquals((ThemeId.entries.size-1) * 8, serverClicks)
+            assertEquals((ThemeId.entries.size-1) * 8, settingsClicks)
         }
     }
 

@@ -17,12 +17,14 @@ import androidx.navigation.compose.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.v2ray.ang.R
 import com.v2ray.ang.ui.compose.LocalThemeConfig
+import com.v2ray.ang.ui.compose.serviceStatusLabel
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
 internal fun PremiumShell(vm: MainViewModel, action: (MainAction)->Unit, navigate: (MainDestination)->Unit) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val connectionTarget by vm.connectionGate.targetState.collectAsStateWithLifecycle()
     val terminalState by vm.terminal.state.collectAsStateWithLifecycle()
     val prefs by vm.premiumState.collectAsStateWithLifecycle()
     val browser by vm.premiumBrowserState.collectAsStateWithLifecycle()
@@ -33,27 +35,32 @@ internal fun PremiumShell(vm: MainViewModel, action: (MainAction)->Unit, navigat
     val selected = group.rows.firstOrNull { it.guid == state.selectedGuid }
     PremiumTheme {
         if (billing.visible) BillingDialog(billing, action)
-        PremiumTabNavigation(billing.returnSequence) { route, selectTab, padding, bottomClearance ->
-            LaunchedEffect(route) { if(route!="terminal") action(MainAction.OpenTerminal("closed")) }
+        val terminalMode = LocalThemeConfig.current.id == com.v2ray.ang.ui.compose.ThemeId.Terminal
+        PremiumTabNavigation(billing.returnSequence,
+            onTerminalPageChanged={action(MainAction.OpenTerminal(it))}) { route, selectTab, goBack, padding, bottomClearance ->
+            val openServers = { selectTab(if (terminalMode) "serverPicker" else "servers") }
             when (route) {
-                "terminal" -> com.v2ray.ang.ui.terminal.TerminalToolsScreen(terminalState, vm.terminal, action, {selectTab("home")}, padding, bottomClearance)
                 "home" -> if(LocalThemeConfig.current.id == com.v2ray.ang.ui.compose.ThemeId.Terminal)
-                    com.v2ray.ang.ui.terminal.TerminalHome(state, selected, action, {selectTab("servers")}, {selectTab("more")},
-                        {page->action(MainAction.OpenTerminal(page));selectTab("terminal")},padding,bottomClearance)
+                    com.v2ray.ang.ui.terminal.TerminalHome(state, selected, action, openServers, {selectTab("more")},
+                        padding,bottomClearance)
                 else HomeScreen(
-                    if(state.isRunning) ConnectionStatus.Connected else if(state.isConnecting) ConnectionStatus.Connecting else ConnectionStatus.Disconnected,
+                    state.connectionPresentation(),
                     selected, {action(MainAction.ToggleService)}, {selectTab("servers")}, {selectTab("more")},
-                    accountLogin=state.accountLogin, traffic=state.traffic, contentInsets=padding, bottomPadding=bottomClearance)
-                "servers" -> ServersScreen(group.rows, browserInput, browser, loading,
+                    accountLogin=state.accountLogin, traffic=state.traffic, contentInsets=padding, bottomPadding=bottomClearance,
+                    connectionEnabled=state.connectionActionAvailable(connectionTarget!=null))
+                "servers", "serverPicker" -> if (terminalMode && route == "servers")
+                    com.v2ray.ang.ui.terminal.TerminalToolsScreen(terminalState, vm.terminal, action, padding, bottomClearance)
+                else ServersScreen(group.rows, browserInput, browser, loading,
                     {action(MainAction.SearchPremiumServers(it))}, {action(MainAction.FilterPremiumServers(it))},
                     state.selectedGuid, prefs.favorites, {action(MainAction.SelectServer(it))},
                     {action(MainAction.ToggleFavorite(it))}, {action(MainAction.TestAllServers)},
-                    {action(MainAction.UpdateSubscriptions)}, contentInsets=padding, bottomPadding=bottomClearance)
+                    {action(MainAction.UpdateSubscriptions)}, contentInsets=padding, bottomPadding=bottomClearance,
+                    back=if(route=="serverPicker") goBack else null)
                 "subscription" -> SubscriptionScreen(
                     state.groups.firstOrNull { it.id==state.selectedGroupId }?.usageInfo,
                     prefs.months, {action(MainAction.SelectPremiumPlan(it))},
                     onRenew={action(MainAction.BeginBilling(prefs.months))}, contentInsets=padding, bottomPadding=bottomClearance)
-                "more" -> MoreScreen(prefs, navigate, action, {selectTab("servers")},
+                "more" -> MoreScreen(prefs, navigate, action, openServers,
                     contentInsets=padding, bottomPadding=bottomClearance, account={selectTab("account")})
                 "account" -> AccountScreen(state.accountLogin,
                     state.groups.firstOrNull {it.id==com.v2ray.ang.AppConfig.TNGL_SUB_ID}?.usageInfo,
@@ -67,18 +74,25 @@ internal fun PremiumShell(vm: MainViewModel, action: (MainAction)->Unit, navigat
 @Composable
 internal fun PremiumTabNavigation(
     billingReturnSequence: Long = 0,
-    content: @Composable (String, (String) -> Unit, PaddingValues, Dp) -> Unit,
+    onTerminalPageChanged: (String) -> Unit = {},
+    content: @Composable (String, (String) -> Unit, () -> Unit, PaddingValues, Dp) -> Unit,
 ) {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route ?: "home"
+    // Keep the second slot's route stable when changing worlds or restoring navigation.
+    // Terminal renders its console in this slot; the server picker remains a child screen.
     val tabs = remember { listOf("home", "servers", "subscription", "more") }
+    val terminalMode = LocalThemeConfig.current.id == com.v2ray.ang.ui.compose.ThemeId.Terminal
     val selectTab: (String) -> Unit = remember(nav) {
         { target ->
             if (nav.currentDestination?.route == "account" && target in tabs) {
                 nav.popBackStack("more", inclusive=false)
             }
-            if (target == "terminal") { nav.navigate("terminal") { launchSingleTop=true } }
+            if (nav.currentDestination?.route == "serverPicker" && target in tabs) {
+                nav.popBackStack()
+            }
+            if (target == "serverPicker") { nav.navigate("serverPicker") { launchSingleTop=true } }
             if (target == "account" && nav.currentDestination?.route == "more") {
                 nav.navigate("account") {launchSingleTop=true}
             } else if (target in tabs && nav.currentDestination?.route != target) {
@@ -101,13 +115,28 @@ internal fun PremiumTabNavigation(
             returnHandled = true
         }
     }
-    androidx.activity.compose.BackHandler(enabled=route=="account" || route=="terminal") {selectTab(if(route=="terminal") "home" else "more")}
-    FloatingNavigationLayout(if(route=="account") "more" else if(route=="terminal") "home" else route, selectTab) { padding, bottomClearance ->
+    LaunchedEffect(terminalMode) {
+        if (!terminalMode && nav.currentDestination?.route == "serverPicker") selectTab("servers")
+    }
+    val terminalPageChanged by rememberUpdatedState(onTerminalPageChanged)
+    LaunchedEffect(route, terminalMode) {
+        terminalPageChanged(if (terminalMode && route=="servers") "console" else "closed")
+    }
+    val goBack: () -> Unit = { nav.popBackStack() }
+    androidx.activity.compose.BackHandler(enabled=route=="account" || route=="serverPicker") {
+        if (route=="serverPicker") goBack() else selectTab("more")
+    }
+    FloatingNavigationLayout(if(route=="account") "more" else if(route=="serverPicker") "servers" else route,
+        selectTab, terminalConsole=terminalMode && route=="servers") { padding, bottomClearance ->
         Box(Modifier.fillMaxSize()) {
             NavHost(nav, startDestination="home",
                 modifier=Modifier.align(Alignment.TopCenter).widthIn(max=840.dp).fillMaxSize()) {
-                (tabs + listOf("account","terminal")).forEach { target ->
-                    composable(target) { content(target, selectTab, padding, bottomClearance) }
+                (tabs + listOf("account","serverPicker")).forEach { target ->
+                    composable(target) {
+                        CompositionLocalProvider(com.v2ray.ang.ui.compose.LocalMotionVisible provides (target==route)) {
+                            content(target, selectTab, goBack, padding, bottomClearance)
+                        }
+                    }
                 }
             }
         }
@@ -125,6 +154,7 @@ internal fun HomeScreen(
     traffic: TrafficUiState = TrafficUiState(),
     contentInsets: PaddingValues = PaddingValues(0.dp),
     bottomPadding: Dp = 0.dp,
+    connectionEnabled: Boolean = true,
 ) {
     val listState = rememberLazyListState()
     val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
@@ -153,7 +183,7 @@ internal fun HomeScreen(
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(gap)) {
                             HomeHeader(compact, settings)
-                            HomeControls(status, server != null, accountLogin, diameter, compact, connect)
+                            HomeControls(status, connectionEnabled && (server != null || status==ConnectionStatus.Connected), accountLogin, diameter, compact, connect)
                         }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
                             HomeServer(server, servers, compact)
@@ -163,7 +193,7 @@ internal fun HomeScreen(
                 } else {
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(gap)) {
-                        HomeControls(status, server != null, accountLogin, diameter, compact, connect)
+                        HomeControls(status, connectionEnabled && (server != null || status==ConnectionStatus.Connected), accountLogin, diameter, compact, connect)
                         HomeServer(server, servers, compact)
                         HomeTraffic(traffic, compact)
                     }
@@ -214,12 +244,8 @@ private fun HomeControls(
         }
         ConnectionButton(status, enabled = enabled, diameter = diameter, onClick = connect)
         Text(
-            stringResource(when (status) {
-                ConnectionStatus.Connected -> R.string.premium_on
-                ConnectionStatus.Connecting -> R.string.premium_connecting
-                else -> R.string.premium_off
-            }),
-            modifier = Modifier.background(scene.background.copy(alpha = .85f), RoundedCornerShape(12.dp))
+            stringResource(status.serviceStatusLabel()),
+            modifier = Modifier.clearAndSetSemantics {}.background(scene.background.copy(alpha = .85f), RoundedCornerShape(12.dp))
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             style = textStyle,
             color = scene.onScene,
@@ -249,11 +275,14 @@ private fun HomeTraffic(traffic: TrafficUiState, compact: Boolean) {
 
 @Composable
 internal fun ServersScreen(rows: List<ServerRowUiModel>, input: PremiumBrowserInput, browser: PremiumBrowserState, loading: Boolean, search:(String)->Unit, setFilter:(Int)->Unit, selected: String?, favorites: Set<String>,
-                          select:(String)->Unit, favorite:(String)->Unit, measure:()->Unit, refresh:()->Unit, contentInsets:PaddingValues=PaddingValues(0.dp), bottomPadding:Dp=0.dp) {
+                          select:(String)->Unit, favorite:(String)->Unit, measure:()->Unit, refresh:()->Unit, contentInsets:PaddingValues=PaddingValues(0.dp), bottomPadding:Dp=0.dp, back:(()->Unit)?=null) {
     val query=input.query
     val filter=input.filter
     val filtered=browser.rows
     LazyColumn(Modifier.fillMaxSize(), contentPadding=floatingContentPadding(contentInsets,bottomPadding,20.dp,20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        if (back != null) item(key="back") {
+            TextButton(onClick=back) { Text(stringResource(R.string.terminal_back)) }
+        }
         item { Text(stringResource(R.string.premium_servers),style=MaterialTheme.typography.headlineMedium) }
         item { OutlinedTextField(query,search,Modifier.fillMaxWidth(),singleLine=true,
             label={Text(stringResource(R.string.premium_search))},shape=RoundedCornerShape(18.dp)) }

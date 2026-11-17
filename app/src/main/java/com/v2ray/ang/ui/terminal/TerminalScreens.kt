@@ -10,6 +10,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.*
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.res.*
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.*
@@ -51,7 +52,7 @@ import com.v2ray.ang.ui.main.*
  }
 }
 @Composable internal fun TerminalHome(state:MainUiState,server:ServerRowUiModel?,action:(MainAction)->Unit,
- servers:()->Unit,settings:()->Unit,tools:(String)->Unit,padding:PaddingValues,bottom:Dp) {
+ servers:()->Unit,settings:()->Unit,padding:PaddingValues,bottom:Dp) {
  BoxWithConstraints(Modifier.fillMaxSize()) {
  val wide=maxWidth>=600.dp || (state.doubleColumnDisplay && maxWidth>=480.dp)
  Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(floatingContentPadding(padding,bottom,16.dp,12.dp)),
@@ -74,26 +75,11 @@ import com.v2ray.ang.ui.main.*
    TerminalServerCard(server,servers)
    TerminalTraffic(state.traffic)
   }
-  FlowRow {listOf("console" to R.string.terminal_console_title,"fetch" to R.string.terminal_neofetch_title,"events" to R.string.terminal_logs_title).forEach{(page,id)->
-    TextButton({tools(page)}){Text(stringResource(id))}
-  }}
  }
- }
-}
-@Composable private fun TerminalTraffic(traffic:TrafficUiState) {
- TerminalWindow(stringResource(R.string.terminal_stats_title)){
-    TrafficChart(traffic.samples,traffic.latest?.let{formatTrafficSpeed(it.download)},
-      traffic.latest?.let{formatTrafficSpeed(it.upload)},traffic.latest?.let{(it.connectedMillis/1000).toString()+" s"},compact=true)
- }
-}
-@Composable internal fun TerminalServerCard(server:ServerRowUiModel?,open:()->Unit) {
- TerminalWindow(stringResource(R.string.terminal_server_title)){
-  if(server!=null) ServerCard(server,true,false,open,null,true)
-  else TextButton(open){Text(stringResource(R.string.premium_choose))}
  }
 }
 @Composable internal fun TerminalToolsScreen(model:TerminalState,handler:TerminalCommandHandler,action:(MainAction)->Unit,
- back:()->Unit,padding:PaddingValues,bottom:Dp) {
+ padding:PaddingValues,bottom:Dp) {
  val clipboard=LocalClipboardManager.current
  val appearance by com.v2ray.ang.ui.compose.ThemeManager.appearance.collectAsStateWithLifecycle()
  val config=TerminalThemes.config(appearance.terminalPalette)
@@ -104,11 +90,13 @@ import com.v2ray.ang.ui.main.*
  Column(Modifier.fillMaxSize().background(config.scene.background).verticalScroll(rememberScrollState())
    .padding(padding).consumeWindowInsets(padding).imePadding().padding(start=16.dp,end=16.dp,bottom=bottom),
    verticalArrangement=Arrangement.spacedBy(12.dp)){
-  TextButton(back){Text(stringResource(R.string.terminal_back))}
   TerminalPrompt()
-  FlowRow {listOf("console" to R.string.terminal_console_title,"fetch" to R.string.terminal_neofetch_title,"events" to R.string.terminal_logs_title).forEach{(page,id)->
-   TextButton({action(MainAction.OpenTerminal(page))}){Text(stringResource(id))}
-  }}
+  FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+   listOf("console" to R.string.terminal_console_title,"fetch" to R.string.terminal_neofetch_title,"events" to R.string.terminal_logs_title).forEach{(page,id)->
+    FilterChip(selected=model.page==page,onClick={action(MainAction.OpenTerminal(page))},
+     label={Text(stringResource(id))},modifier=Modifier.heightIn(min=48.dp).testTag("terminal_page_$page"))
+   }
+  }
   TerminalWindow(stringResource(when(model.page){"fetch"->R.string.terminal_neofetch_title;"events"->R.string.terminal_logs_title;else->R.string.terminal_console_title})){
     if(model.page=="fetch"){AsciiPenguin(false,true,neutral=true);Text(handler.diagnostics(),fontFamily=TerminalFont)}
     else (if(model.page=="events")model.events else model.lines).forEach{ line ->
