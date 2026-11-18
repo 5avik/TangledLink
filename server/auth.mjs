@@ -32,6 +32,7 @@ export function createAuth(path) {
       id TEXT PRIMARY KEY, salt TEXT, hash TEXT, version INTEGER NOT NULL DEFAULT 0,
       invite TEXT, invite_expires INTEGER
     );
+    CREATE TABLE IF NOT EXISTS web_verified_email (account TEXT PRIMARY KEY, email TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions (
       hash TEXT PRIMARY KEY, account TEXT NOT NULL REFERENCES accounts(id),
       expires INTEGER NOT NULL
@@ -68,6 +69,33 @@ export function createAuth(path) {
       db.prepare('DELETE FROM sessions WHERE account = ?').run(id);
     });
     return code;
+  }
+  function hasRecoveryPassword(id) {
+    return Boolean(account(id)?.hash);
+  }
+  function recoveryState(id, invite) {
+    const row = validId(id) ? account(id) : null;
+    if (!row || db.prepare('SELECT 1 FROM registrations WHERE account=? AND ready=0').get(id)) return null;
+    const email = db.prepare('SELECT email FROM web_verified_email WHERE account=?').get(id)?.email;
+    if (email) return { mode: 'reset', email, version: row.version };
+    if (row.hash || !row.invite || row.invite_expires <= now()) return null;
+    const inviteValid = typeof invite === 'string' && invite.length <= 128 && equalHash(row.invite, digest(invite));
+    return { mode: 'activate', inviteValid, version: row.version };
+  }
+  async function recover(id, state, email, password, invite, verifyCode) {
+    checkPassword(password);
+    const salt = secret(), hash = await passwordHash(password, salt);
+    await verifyCode();
+    tx(() => {
+      const current = recoveryState(id, invite);
+      if (current?.version !== state.version || current.mode !== state.mode ||
+          (current.mode === 'reset' ? current.email !== email : !current.inviteValid))
+        throw new ApiError(409, 'recovery_changed');
+      db.prepare('UPDATE accounts SET salt=?, hash=?, invite=NULL, invite_expires=NULL, version=version+1 WHERE id=?')
+        .run(salt, hash, id);
+      if (current.mode === 'activate') db.prepare('INSERT INTO web_verified_email VALUES (?,?)').run(id, email);
+      db.prepare('DELETE FROM sessions WHERE account=?').run(id);
+    });
   }
   async function activate(id, code, password, verifySubscription = async () => {}) {
     checkPassword(password);
@@ -165,7 +193,7 @@ export function createAuth(path) {
     if (!account(id)) throw new ApiError(404, 'not_found');
     return db.prepare('DELETE FROM sessions WHERE account=?').run(id).changes;
   }
-  return { register, invite, activate, login, session, changePassword, listAccounts, revokeSessions,
+  return { hasRecoveryPassword, register, invite, activate, login, recoveryState, recover, session, changePassword, listAccounts, revokeSessions,
     logout(token) { db.prepare('DELETE FROM sessions WHERE hash=?').run(digest(token)); },
     close() { db.close(); } };
 }

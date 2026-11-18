@@ -1,0 +1,4 @@
+<resources>
+    <string name="auth_portal_welcome">Welcome!</string>
+    <string name="auth_portal_checking">Checking credentials…</string>
+</resources>

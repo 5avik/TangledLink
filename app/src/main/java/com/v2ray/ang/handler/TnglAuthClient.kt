@@ -49,6 +49,11 @@ object TnglAuthClient {
         val response=post("/v1/mobile-auth/bind",body,token)
         return EmailAuthResult(required=response.optBoolean("emailRequired"),retrySeconds=response.optLong("retryAfterSeconds",60))
     }
+    fun recoverPassword(id:String, email:String?, invite:String?, code:String?, password:String?): JSONObject {
+        val body=JSONObject().put("id",id).put("email",email).put("inviteCode",invite)
+            .put("emailCode",code).put("password",password)
+        return post("/v1/mobile-auth/"+if(invite==null) "recover" else "recover-first",body)
+    }
     fun verifiedEmail(token:String):String? {
         val request=Request.Builder().url(BASE_URL+"/v1/mobile-auth/email").header("Authorization","Bearer "+token).build()
         client.newCall(request).execute().use {response->

@@ -66,17 +66,14 @@ class TnglLoginDialogTest {
         }
     }
 
-    @Test fun activationSubmitsOneTimeCode() {
+    @Test fun forgottenPasswordOpensRecoveryInsteadOfFirstActivation() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        var submitted: String? = null
+        var opened = false
         compose.setContent {
-            StaticAuthTheme { TnglLoginDialog(onConfirm = { _, _, code -> submitted = code }) }
+            StaticAuthTheme { TnglLoginDialog(onForgot = { opened = true }, onConfirm = { _, _, _ -> }) }
         }
-        compose.onNodeWithText(context.getString(R.string.auth_activate)).performScrollTo().performClick()
-        compose.onNodeWithText(context.getString(R.string.auth_id)).performTextInput("example123")
-        compose.onNodeWithText(context.getString(R.string.auth_activation_code)).performTextInput("one-time-code")
-        compose.onNodeWithText(context.getString(R.string.auth_new_password)).performScrollTo().performTextInput("local-password")
-        compose.onNodeWithText(context.getString(R.string.auth_activate_submit)).performScrollTo().performClick()
-        compose.runOnIdle { assertEquals("one-time-code", submitted) }
+        compose.onNodeWithText(context.getString(R.string.auth_activate)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.recovery_title)).performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(true, opened) }
     }
 }

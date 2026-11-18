@@ -104,5 +104,5 @@ export function openWebEmail({ database, credentials, key, fetcher = fetch, mail
     db.prepare('INSERT OR IGNORE INTO web_verified_email VALUES (?,?)').run(account, email);
     if (emailFor(account) !== email) throw new ApiError(409, 'email_already_bound');
   }
-  return { challenge, emailFor, normalizeEmail, bind, close(){db.close();} };
+  return { database, challenge, emailFor, normalizeEmail, bind, close(){db.close();} };
 }

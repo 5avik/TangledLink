@@ -1,7 +1,8 @@
 import {createEmailAuth,emailRequired} from './email-auth.mjs';
+import {recoverAccount} from './recovery.mjs';
 import { openWebEmail } from './web-email.mjs';
 import { createServer } from 'node:http';
-import { createAuth, ApiError } from './auth.mjs';
+import { createAuth, ApiError, validId } from './auth.mjs';
 import { subscription } from './upstream.mjs';
 import { panel, billing, lava, membership } from './billing-runtime.mjs';
 import { LAVA_PLANS } from './lava.mjs';
@@ -10,13 +11,14 @@ import { createWebBilling } from './web-billing.mjs';
 process.umask(0o077);
 const base = process.env.SUBSCRIPTION_BASE;
 if (!base) throw new Error('SUBSCRIPTION_BASE is required');
-const auth = createAuth(process.env.AUTH_DB ?? '/var/lib/tngl-auth/auth.sqlite');
+const authDatabase = process.env.AUTH_DB ?? '/var/lib/tngl-auth/auth.sqlite';
+const auth = createAuth(authDatabase);
 const webBilling = lava && process.env.WEB_BILLING_KEY ? createWebBilling({
   path: process.env.BILLING_DB ?? '/var/lib/tngl-auth/billing.sqlite',
   key: process.env.WEB_BILLING_KEY, billing, lava
 }) : null;
 const webEmail = process.env.CREDENTIALS_DIRECTORY && process.env.WEB_BILLING_KEY ? openWebEmail({
-  database: '/var/lib/tngl-auth/web-email.sqlite',
+  database: authDatabase,
   credentials: process.env.CREDENTIALS_DIRECTORY + '/gmail.json',
   key: process.env.WEB_BILLING_KEY
 }) : null;
@@ -103,11 +105,41 @@ return createServer(async (req, res) => {
       limit('email-auth:'+client,20);
       if (!web && operation==='register') limit('register:'+client,5);
       const data=await json(req);
+      if (!web && ['recover','recover-first'].includes(operation)) {
+        limit('recovery:'+client,20);
+        if(typeof data.id==='string')limit('recovery-account:'+data.id.slice(0,128),15);
+        if(working>=4)throw new ApiError(429,'rate_limited');
+        working++;
+        try {
+          return reply(200,await recoverAccount({auth,email:emailStore,
+            verifyProfile:id=>panelClient?panelClient.getClient(id):subscriptionReader(base,id)},operation,data));
+        } finally {working--;}
+      }
       if (operation==='bind') return reply(200,await emailFlow.bind(token,data));
       if (typeof data.id==='string') limit('email-auth-account:'+data.id.slice(0,128),15);
       if (working>=4) throw new ApiError(429,'rate_limited');
       working++;
       try {
+        if (web && operation === 'recover') {
+          if (!validId(data.id)) throw new ApiError(400, 'invalid_id');
+          const state = auth.recoveryState(data.id, data.invite);
+          if (!state) {
+            if (data.emailCode !== undefined) throw new ApiError(400, 'invalid_email_code');
+            return reply(200, { step: 'code' });
+          }
+          if (state.mode === 'activate' && data.invite === undefined) return reply(200, { step: 'activate' });
+          if (state.mode === 'activate' && !state.inviteValid) throw new ApiError(401, 'invalid_activation');
+          const email = state.email ?? emailStore.normalizeEmail(data.email);
+          const proof = String(state.version);
+          const purpose = 'recovery-' + state.mode;
+          if (data.emailCode === undefined) {
+            await emailStore.challenge(purpose, data.id, email, proof);
+            return reply(200, { step: 'code' });
+          }
+          await auth.recover(data.id, state, email, data.password, data.invite,
+            () => emailStore.challenge(purpose, data.id, email, proof, data.emailCode));
+          return reply(200, { step: 'done' });
+        }
         if(operation==='register')return reply(200,await emailFlow.register(data,{web}));
         if(operation==='login')return reply(200,await emailFlow.login(data));
         throw new ApiError(404,'not_found');

@@ -106,6 +106,38 @@ class MainViewModel(
         )
     )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    private val recovery=MutableStateFlow<RecoveryState?>(null)
+    internal val recoveryState=recovery.asStateFlow()
+    private var recoveryRequest:MainAction.RequestRecovery?=null
+    private var recoveryJob:kotlinx.coroutines.Job?=null
+
+    private fun recoveryCall(request:MainAction.RequestRecovery,code:String?=null,password:String?=null) {
+        val current=recovery.value?:return
+        if(current.busy || (code==null && System.currentTimeMillis()<current.resendAt))return
+        recovery.value=current.copy(busy=true,error=null)
+        recoveryRequest=request
+        recoveryJob=viewModelScope.launch {
+            try {
+                val result=withContext(ioDispatcher){
+                    TnglAuthClient.recoverPassword(request.id.trim(),request.email,request.invite,code,password)
+                }
+                val step = recoveryResponseStep(result.optString("step"),
+                    result.optBoolean("emailRequired"), result.optBoolean("ok"), code != null)
+                    ?: throw TnglAuthException("recovery_unconfirmed")
+                if (step == "done") recoveryRequest = null
+                recovery.value = RecoveryState(step = step,
+                    resendAt = if (step == "code")
+                        System.currentTimeMillis() + result.optLong("retryAfterSeconds", 60).coerceAtLeast(0) * 1000
+                    else 0)
+            }catch(e:CancellationException){throw e}
+            catch(e:Exception){
+                val api=e as? TnglAuthException
+                recovery.value=current.copy(error=api?.errorCode?:"network",
+                    resendAt=api?.retryAfterSeconds?.let{System.currentTimeMillis()+it*1000}?:current.resendAt)
+            }
+        }
+    }
+
     internal val emailVerification = EmailVerificationController(viewModelScope,ioDispatcher)
     private val billing = BillingController(viewModelScope, ioDispatcher,
         com.v2ray.ang.handler.TnglBillingClient, onPaid = { refreshAccountAccess(); updateTnglSubscription() })
@@ -344,6 +376,23 @@ class MainViewModel(
             is MainAction.SubmitEmailCode -> emailVerification.submit(action.code)
             MainAction.ResendEmailCode -> emailVerification.resend()
             MainAction.CancelEmailCode -> emailVerification.cancel()
+            MainAction.OpenRecovery -> recovery.update{RecoveryState()}
+            MainAction.CloseRecovery -> { recoveryJob?.cancel(); recoveryRequest=null; recovery.value=null }
+            is MainAction.RequestRecovery -> recoveryCall(
+                if(recovery.value?.step=="code") recoveryRequest?:action else action)
+            is MainAction.FinishRecovery -> {
+                val current=recovery.value
+                if(current?.step=="code" && !current.busy) {
+                    val error=when {
+                        action.password.length !in 12..128 -> "password_policy"
+                        action.password!=action.confirmation -> "password_mismatch"
+                        !Regex("[0-9]{6}").matches(action.code) -> "invalid_email_code"
+                        else -> null
+                    }
+                    if(error!=null)recovery.value=current.copy(error=error)
+                    else recoveryRequest?.let{recoveryCall(it,action.code,action.password)}
+                }
+            }
             MainAction.RefreshEmail -> refreshEmail()
             MainAction.ShowBindEmail -> { emailVerification.cancel(); _uiState.update{it.copy(showBindEmail=true)} }
             MainAction.DismissBindEmail -> { emailVerification.cancel(); _uiState.update{it.copy(showBindEmail=false)} }
@@ -734,7 +783,7 @@ class MainViewModel(
                     if (dataSource.getSelectServer() !in servers) servers.firstOrNull()?.let(dataSource::setSelectServer)
                 }
                 val access = withContext(ioDispatcher) { runCatching { TnglAuthClient.accountStatus() }.getOrDefault(com.v2ray.ang.handler.AccountAccess()) }
-                _uiState.update { it.copy(showTnglLoginDialog = false, accountAccess = access, verifiedEmail = null, emailLoaded = false, showBindEmail = false) }
+                _uiState.update { it.copy(showTnglLoginDialog = false, authSuccessSequence = it.authSuccessSequence + 1, accountAccess = access, verifiedEmail = null, emailLoaded = false, showBindEmail = false) }
                 if (billingReturnPending) {
                     billingReturnPending = false
                     billing.returnFromPayment()

@@ -32,6 +32,7 @@ data class MainUiState(
     val showTnglLoginDialog: Boolean = false,
     val showPasswordDialog: Boolean = false,
     val authBusy: Boolean = false,
+    val authSuccessSequence: Long = 0,
     val authError: Int? = null,
     val verifiedEmail: String? = null,
     val emailLoaded: Boolean = false,
@@ -119,6 +120,10 @@ sealed interface MainAction {
     data class SubmitEmailCode(val code:String):MainAction
     data object ResendEmailCode:MainAction
     data object CancelEmailCode:MainAction
+    data object OpenRecovery:MainAction
+    data object CloseRecovery:MainAction
+    data class RequestRecovery(val id:String,val email:String?=null,val invite:String?=null):MainAction
+    data class FinishRecovery(val code:String,val password:String,val confirmation:String):MainAction
     data object RefreshEmail:MainAction
     data object ShowBindEmail:MainAction
     data object DismissBindEmail:MainAction

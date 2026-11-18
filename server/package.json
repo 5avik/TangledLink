@@ -7,6 +7,6 @@
   },
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test email-auth.test.mjs mobile-email-api.test.mjs registration.test.mjs xui-registration.test.mjs auth.test.mjs auth-availability.test.mjs upstream.test.mjs admin-panel.test.mjs billing.test.mjs billing-reset.test.mjs xui-renewal.test.mjs lava.test.mjs app-links.test.mjs web-billing.test.mjs independent-orders.test.mjs"
+    "test": "node --test recovery.test.mjs email-auth.test.mjs mobile-email-api.test.mjs registration.test.mjs xui-registration.test.mjs auth.test.mjs auth-availability.test.mjs upstream.test.mjs admin-panel.test.mjs billing.test.mjs billing-reset.test.mjs xui-renewal.test.mjs lava.test.mjs app-links.test.mjs web-billing.test.mjs independent-orders.test.mjs"
   }
 }

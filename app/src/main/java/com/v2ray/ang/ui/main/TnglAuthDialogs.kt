@@ -8,13 +8,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.v2ray.ang.R
 import com.v2ray.ang.ui.compose.BrandButton
-import androidx.compose.foundation.Image
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.res.painterResource
@@ -42,15 +46,18 @@ fun TnglLoginDialog(
     busy: Boolean = false,
     error: Int? = null,
     onRegister: ((String, String, String) -> Unit)? = null,
+    portalLoading: Boolean = false,
+    onForgot: (() -> Unit)? = null,
     onConfirm: (String, String, String?) -> Unit
 ) {
     var id by rememberSaveable { mutableStateOf("") }
-    var activation by rememberSaveable { mutableStateOf(false) }
     var registration by rememberSaveable { mutableStateOf(false) }
     var email by rememberSaveable { mutableStateOf("") }
     // Passwords and one-time codes deliberately stay out of saved instance state.
     var password by remember { mutableStateOf("") }
-    var code by remember { mutableStateOf("") }
+    val motion = com.v2ray.ang.ui.compose.sceneMotionAllowed()
+    val dim = animateFloatAsState(if (portalLoading) .50f else 1f,
+        tween(if (motion) 300 else 0), label = "authorization dim")
     MaterialTheme(colorScheme = darkColorScheme(
         primary = androidx.compose.ui.graphics.Color(0xFF65FF85),
         secondary = androidx.compose.ui.graphics.Color(0xFF00DDB5),
@@ -78,32 +85,32 @@ fun TnglLoginDialog(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
                 ) {
-                    Image(painterResource(R.drawable.tngl_brand_mark), contentDescription = null,
-                        modifier = Modifier.size(72.dp))
+                    AuthPortalLogo(portalLoading, error != null, motion)
+                    if (portalLoading) Text(stringResource(R.string.auth_portal_checking),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                    Column(Modifier.fillMaxWidth().graphicsLayer { alpha = dim.value },
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
                     Text(stringResource(if (registration) R.string.auth_registration else R.string.tngl_login_dialog_title),
                         style = MaterialTheme.typography.headlineMedium,
                         color = androidx.compose.ui.graphics.Color.White)
-                    Text(stringResource(if (registration) R.string.registration_id_rule else if (activation) R.string.auth_activation_help else R.string.tngl_login_dialog_message),
+                    Text(stringResource(if (registration) R.string.registration_id_rule else R.string.tngl_login_dialog_message),
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     AuthField(id, { id = it }, R.string.auth_id, busy)
-                    if (activation) AuthField(code, { code = it }, R.string.auth_activation_code, busy, secret = true)
-                    AuthField(password, { password = it }, if (activation) R.string.auth_new_password else R.string.auth_password, busy, secret = true)
+                    AuthField(password, { password = it }, R.string.auth_password, busy, secret = true)
                     if(registration) AuthField(email,{email=it},R.string.email_address,busy)
                     AuthError(error)
-                    TextButton(enabled = !busy, onClick = {
-                        registration = false
-                        activation = !activation
-                        password = ""
-                        code = ""
-                    }) {
-                        Text(stringResource(if (activation) R.string.auth_login_mode else R.string.auth_activate))
                     }
                     BrandButton(modifier = Modifier.fillMaxWidth(), enabled = !busy,
-                        onClick = { if (registration) onRegister?.invoke(id,password,email) else onConfirm(id, password, if (activation) code else null) }) {
-                        Text(stringResource(if (busy) R.string.auth_working else if (registration) R.string.registration_submit else if (activation) R.string.auth_activate_submit else R.string.tngl_login_button))
+                        onClick = { if (registration) onRegister?.invoke(id,password,email) else onConfirm(id, password, null) }) {
+                        Text(stringResource(if (busy) R.string.auth_working else if (registration) R.string.registration_submit else R.string.tngl_login_button))
+                    }
+                    if (!registration && onForgot != null) TextButton(onClick=onForgot,enabled=!busy) {
+                        Text(stringResource(R.string.recovery_title))
                     }
                     OutlinedButton(onClick = {
-                        registration = !registration; activation = false; password = ""; code = ""
+                        registration = !registration; password = ""
                     }, enabled = !busy && onRegister != null, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(if (registration) R.string.auth_login_mode else R.string.auth_registration))
                     }
