@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terminal_theme_name">Terminal (Linux)</string>
+    <string name="terminal_theme_description">Терминал Linux, ASCII и реальное состояние VPN</string>
+    <string name="terminal_palette_title">Палитра терминала</string>
+    <string name="terminal_console_title">Консоль</string>
+    <string name="terminal_neofetch_title">Системная информация</string>
+    <string name="terminal_logs_title">События подключения</string>
+    <string name="terminal_command_hint">Введите команду</string>
+    <string name="terminal_run_command">Выполнить команду</string>
+    <string name="terminal_no_data">Нет данных</string>
+    <string name="terminal_connect">Подключить VPN</string>
+    <string name="terminal_disconnect">Отключить VPN</string>
+    <string name="terminal_connected">VPN-сервис запущен</string>
+    <string name="terminal_disconnected">VPN-сервис остановлен</string>
+    <string name="terminal_busy">Запрос выполняется. Дождитесь результата.</string>
+    <string name="terminal_already_running">VPN уже запущен</string>
+    <string name="terminal_already_stopped">VPN уже остановлен</string>
+    <string name="terminal_server_missing">Сервер больше недоступен</string>
+    <string name="terminal_input_too_long">Команда слишком длинная</string>
+    <string name="terminal_input_unsupported_syntax">Введите одну команду без операторов оболочки</string>
+    <string name="terminal_input_unknown_command">Неизвестная команда. Введите help.</string>
+    <string name="terminal_input_invalid_arguments">Неверные аргументы. Введите help.</string>
+    <string name="terminal_input_unknown_palette">Неизвестная палитра. Введите theme list.</string>
+    <string name="terminal_clear_output">Очистить консоль</string>
+    <string name="terminal_copy_diagnostics">Скопировать безопасную диагностику</string>
+    <string name="terminal_reduce_effects">Уменьшить эффекты терминала</string>
+    <string name="terminal_freedom">Свобода уже установлена. Powered by TangledLink.</string>
+    <string name="terminal_unavailable">Эти данные недоступны в приложении</string>
+</resources>

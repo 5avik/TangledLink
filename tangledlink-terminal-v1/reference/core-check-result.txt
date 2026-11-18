@@ -1,0 +1,3 @@
+Terminal core: 83 checks passed
+
+Compiled with cached Kotlin 2.4.21 compiler, JVM target 17, Java 21. Core parser, palette model and framework-free checks only. No Android compilation or VPN run.

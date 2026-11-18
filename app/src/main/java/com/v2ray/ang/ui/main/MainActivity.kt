@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.v2ray.ang.AngApplication
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.R
@@ -61,7 +62,8 @@ class MainActivity : HelperBaseComponentActivity() {
 
     private val requestVpnPermission =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            if (it.resultCode == RESULT_OK) startV2Ray()
+            if (it.resultCode == RESULT_OK) { try { startV2Ray() } catch (_: Exception) { mainViewModel.connectionRequestFinished() } }
+            else mainViewModel.connectionRequestFinished()
         }
 
     private val profileEditorLauncher =
@@ -94,8 +96,43 @@ class MainActivity : HelperBaseComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mainViewModel.onAction(MainAction.Initialize)
+        // An existing browser intent is not a new return after activity recreation.
+        if (savedInstanceState == null) handleBillingReturn(intent)
+        lifecycleScope.launch {
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+                mainViewModel.billingPaymentEvents.collect { url -> Utils.openUri(this@MainActivity, url) }
+            }
+        }
 
         checkAndRequestPermission(PermissionType.POST_NOTIFICATIONS) {}
+        if (savedInstanceState == null) lifecycleScope.launch {
+            if (mainViewModel.shouldConnectOnLaunch()) {
+                requestServiceStart()
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleBillingReturn(intent)
+    }
+
+    private fun handleBillingReturn(incoming: Intent?) {
+        if (BillingReturnLink.accepts(incoming?.action, incoming?.dataString)) {
+            // Ignore extras, invoiceId and status: ownership and payment are checked by the server.
+            mainViewModel.onAction(MainAction.ReturnFromBilling)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mainViewModel.observeTraffic(true)
+    }
+
+    override fun onPause() {
+        mainViewModel.observeTraffic(false)
+        super.onPause()
     }
 
     @Composable
@@ -105,7 +142,13 @@ class MainActivity : HelperBaseComponentActivity() {
             mainViewModel = mainViewModel,
             onAction = { action ->
                 when (action) {
+                    MainAction.TerminalSubmit -> mainViewModel.terminal.execute(::dispatchTerminalAction)
                     MainAction.ToggleService -> handleFabAction()
+                    MainAction.OpenSystemVpnSettings -> openSystemSettings(Intent(android.provider.Settings.ACTION_VPN_SETTINGS))
+                    MainAction.OpenNotificationSettings -> openSystemSettings(
+                        if (Build.VERSION.SDK_INT >= 26) Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)
+                        else Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:$packageName")))
                     MainAction.TestCurrentServer -> handleLayoutTestClick()
                     MainAction.ChangeAccount -> {
                         LauncherManager.stopService(this)
@@ -152,14 +195,35 @@ class MainActivity : HelperBaseComponentActivity() {
             MainDestination.Routing -> Intent(this, RoutingSettingActivity::class.java)
             MainDestination.UserAssets -> Intent(this, UserAssetActivity::class.java)
             MainDestination.Settings -> Intent(this, SettingsActivity::class.java)
+            MainDestination.Themes -> Intent(this, com.v2ray.ang.ui.themes.ThemePickerActivity::class.java)
             MainDestination.Logcat -> Intent(this, LogcatActivity::class.java)
             MainDestination.BackupRestore -> Intent(this, BackupActivity::class.java)
             MainDestination.About -> Intent(this, AboutActivity::class.java)
         }
-        settingsActivityLauncher.launch(intent)
+        // Appearance never consumes engine-change flags or restarts the service.
+        if (destination == MainDestination.Themes) startActivity(intent)
+        else settingsActivityLauncher.launch(intent)
     }
 
+    private fun openSystemSettings(intent: Intent) {
+        try { startActivity(intent) }
+        catch (error: android.content.ActivityNotFoundException) { toastError(R.string.toast_failure) }
+        catch (error: SecurityException) { toastError(R.string.toast_failure) }
+    }
+
+    private fun dispatchTerminalAction(action: MainAction) {
+        when(action) {
+            MainAction.ToggleService -> handleFabAction()
+            is MainAction.SelectServer -> setSelectServer(action.guid)
+            MainAction.TestCurrentServer -> handleLayoutTestClick()
+            else -> mainViewModel.onAction(action)
+        }
+    }
     private fun handleFabAction() {
+        if (mainViewModel.uiState.value.isConnecting || !mainViewModel.connectionGate.acquire(mainViewModel.uiState.value.isRunning)) return
+        try { performConnectionAction() } catch (_: Exception) { mainViewModel.connectionRequestFinished() }
+    }
+    private fun performConnectionAction() {
         if (mainViewModel.uiState.value.isRunning) {
             LauncherManager.stopService(this)
         } else {
@@ -168,6 +232,7 @@ class MainActivity : HelperBaseComponentActivity() {
     }
 
     private fun requestServiceStart() {
+        if (!mainViewModel.connectionGate.pending && !mainViewModel.connectionGate.acquire(mainViewModel.uiState.value.isRunning)) return
         if (!SettingsManager.isVpnMode()) {
             startV2Ray()
             return
@@ -184,6 +249,7 @@ class MainActivity : HelperBaseComponentActivity() {
 
     private fun startV2Ray() {
         if (mainViewModel.uiState.value.selectedGuid.isNullOrEmpty()) {
+            mainViewModel.connectionRequestFinished()
             toast(R.string.title_file_chooser)
             return
         }
@@ -191,7 +257,8 @@ class MainActivity : HelperBaseComponentActivity() {
         ) {
             checkAndRequestPermission(PermissionType.ACCESS_LOCAL_NETWORK) {}
         }
-        LauncherManager.startService(this)
+        mainViewModel.connectionStarting()
+        if (!LauncherManager.startServiceFromToggle(this)) mainViewModel.connectionRequestFinished()
     }
 
     private fun importManually(createConfigType: Int) {

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="themes_title">Themes</string>
+    <string name="themes_note">Worlds of TangledLink</string>
+    <string name="theme_original_name">Tangled Original</string>
+    <string name="theme_sakura_name">Sakura</string>
+    <string name="theme_aurora_name">Aurora</string>
+    <string name="theme_cyberpunk_name">Cyberpunk</string>
+    <string name="theme_original_description">Signature green ribbons</string>
+    <string name="theme_sakura_description">A quiet night beneath cherry blossoms</string>
+    <string name="theme_aurora_description">Northern lights over a mountain lake</string>
+    <string name="theme_cyberpunk_description">Neon rain in the night city</string>
+    <string name="theme_preview">Preview</string>
+    <string name="theme_preview_card">Your connection, your world</string>
+    <string name="theme_preview_note">Appearance only. VPN connection is unchanged.</string>
+    <string name="theme_apply">Apply</string>
+    <string name="theme_cancel">Cancel</string>
+    <string name="theme_save_error">Could not save the theme. Please try again.</string>
+    <string name="theme_reduce_effects">Reduce effects</string>
+    <string name="theme_reduce_effects_note">Keep the scene and portal still</string>
+</resources>

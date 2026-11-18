@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "packageName": "tangledlink-terminal-v1",
+  "created": "2026-11-16",
+  "themeId": "terminal",
+  "globalDefaultThemeId": "original",
+  "defaultPaletteId": "matrix_green",
+  "paletteIds": [
+    "matrix_green",
+    "catppuccin_mocha",
+    "tokyo_night",
+    "gruvbox_dark"
+  ],
+  "kind": "Addon resources, pure Kotlin foundation and implementation prompt; not integrated into Android project",
+  "sourceProject": "/home/svk/Projects/TangledVPN",
+  "baselineCommit": "6beb6c0",
+  "sources": "Native authored vectors/SVG/ASCII and local licensed font files. No AI raster generation.",
+  "runtimeBytes": 5278831,
+  "assets": [
+    {
+      "path": "android/res/drawable/tngl_bg_terminal_catppuccin_mocha.xml",
+      "target": "app/src/main/res/drawable/tngl_bg_terminal_catppuccin_mocha.xml",
+      "bytes": 1510,
+      "sha256": "ff69c20c2920692e0296519232dc5786fe181edd49dd4e69b0e271501b1da52b",
+      "resourceId": "tngl_bg_terminal_catppuccin_mocha",
+      "kind": "native-vector-backdrop",
+      "viewport": [
+        360,
+        800
+      ]
+    },
+    {
+      "path": "android/res/drawable/tngl_bg_terminal_gruvbox_dark.xml",
+      "target": "app/src/main/res/drawable/tngl_bg_terminal_gruvbox_dark.xml",
+      "bytes": 1510,
+      "sha256": "35d0a70c81e15ce21ae0c234e41473e82720181b86610209ff6dcdfacc751c43",
+      "resourceId": "tngl_bg_terminal_gruvbox_dark",
+      "kind": "native-vector-backdrop",
+      "viewport": [
+        360,
+        800
+      ]
+    },
+    {
+      "path": "android/res/drawable/tngl_bg_terminal_matrix_green.xml",
+      "target": "app/src/main/res/drawable/tngl_bg_terminal_matrix_green.xml",
+      "bytes": 1510,
+      "sha256": "a9ab1013051c5cf28ca89de6f3d24d1b721b8cb505d83aa3d47258828a9e3271",
+      "resourceId": "tngl_bg_terminal_matrix_green",
+      "kind": "native-vector-backdrop",
+      "viewport": [
+        360,
+        800
+      ]
+    },
+    {
+      "path": "android/res/drawable/tngl_bg_terminal_tokyo_night.xml",
+      "target": "app/src/main/res/drawable/tngl_bg_terminal_tokyo_night.xml",
+      "bytes": 1510,
+      "sha256": "fefa08297f64980d5d8fd2a6c389ea286befb12fcba1d63779c249bd3bd387a6",
+      "resourceId": "tngl_bg_terminal_tokyo_night",
+      "kind": "native-vector-backdrop",
+      "viewport": [
+        360,
+        800
+      ]
+    },
+    {
+      "path": "android/res/drawable-nodpi/tngl_brand_mark.webp",
+      "target": "app/src/main/res/drawable-nodpi/tngl_brand_mark.webp",
+      "bytes": 38038,
+      "sha256": "09ea5e653546335476601f2ec9c23b4db9ce17b34b596ff7c11ccfe1e1bfb178",
+      "resourceId": "tngl_brand_mark",
+      "width": 256,
+      "height": 240,
+      "kind": "existing-brand"
+    },
+    {
+      "path": "android/res/drawable-nodpi/tngl_preview_terminal.webp",
+      "target": "app/src/main/res/drawable-nodpi/tngl_preview_terminal.webp",
+      "bytes": 17060,
+      "sha256": "6a2ff17b3fe4e621c04d34307c7381d47d435b57c04cdc883f28e9b8760f288e",
+      "resourceId": "tngl_preview_terminal",
+      "width": 360,
+      "height": 800,
+      "kind": "static-theme-picker-preview"
+    },
+    {
+      "path": "android/res/drawable-nodpi/tngl_preview_terminal_catppuccin_mocha.webp",
+      "target": "app/src/main/res/drawable-nodpi/tngl_preview_terminal_catppuccin_mocha.webp",
+      "bytes": 16058,
+      "sha256": "0550f85532135bafe990653c40c0dfcedae6f5cb1e0eef9a54e01788e27ef8ca",
+      "resourceId": "tngl_preview_terminal_catppuccin_mocha",
+      "width": 360,
+      "height": 800,
+      "kind": "static-theme-picker-preview"
+    },
+    {
+      "path": "android/res/drawable-nodpi/tngl_preview_terminal_gruvbox_dark.webp",
+      "target": "app/src/main/res/drawable-nodpi/tngl_preview_terminal_gruvbox_dark.webp",
+      "bytes": 16730,
+      "sha256": "7b4b900faf49dd0406922afbf473459021dd9641ec1ee0ef848637a000c605cb",
+      "resourceId": "tngl_preview_terminal_gruvbox_dark",
+      "width": 360,
+      "height": 800,
+      "kind": "static-theme-picker-preview"
+    },
+    {
+      "path": "android/res/drawable-nodpi/tngl_preview_terminal_matrix_green.webp",
+      "target": "app/src/main/res/drawable-nodpi/tngl_preview_terminal_matrix_green.webp",
+      "bytes": 17060,
+      "sha256": "6a2ff17b3fe4e621c04d34307c7381d47d435b57c04cdc883f28e9b8760f288e",
+      "resourceId": "tngl_preview_terminal_matrix_green",
+      "width": 360,
+      "height": 800,
+      "kind": "static-theme-picker-preview"
+    },
+    {
+      "path": "android/res/drawable-nodpi/tngl_preview_terminal_tokyo_night.webp",
+      "target": "app/src/main/res/drawable-nodpi/tngl_preview_terminal_tokyo_night.webp",
+      "bytes": 15788,
+      "sha256": "2f014baaaf666388ee0572bc1fd86708d091e9563a084c4c5e609f37994c41e8",
+      "resourceId": "tngl_preview_terminal_tokyo_night",
+      "width": 360,
+      "height": 800,
+      "kind": "static-theme-picker-preview"
+    },
+    {
+      "path": "android/res/font/tngl_terminal_mono.xml",
+      "target": "app/src/main/res/font/tngl_terminal_mono.xml",
+      "bytes": 350,
+      "sha256": "9aea85d92f85c0aa6709a409883e0df18e5fed66e2e15867881c11bfc7a61399",
+      "resourceId": "tngl_terminal_mono",
+      "kind": "font-family"
+    },
+    {
+      "path": "android/res/font/tngl_terminal_mono_bold.ttf",
+      "target": "app/src/main/res/font/tngl_terminal_mono_bold.ttf",
+      "bytes": 2575364,
+      "sha256": "e490660ad75e0b152c93b1604c2ea1a4ea675f1b8a3fe0d005b1998568f99f1f",
+      "resourceId": "tngl_terminal_mono_bold",
+      "kind": "font-binary"
+    },
+    {
+      "path": "android/res/font/tngl_terminal_mono_regular.ttf",
+      "target": "app/src/main/res/font/tngl_terminal_mono_regular.ttf",
+      "bytes": 2571596,
+      "sha256": "1c680e8cde9fcf8b88a5605ce8d1fb94dd3fb15841f7ca7bf4c55664855e5611",
+      "resourceId": "tngl_terminal_mono_regular",
+      "kind": "font-binary"
+    },
+    {
+      "path": "android/res/values/tngl_terminal_strings.xml",
+      "target": "app/src/main/res/values/tngl_terminal_strings.xml",
+      "bytes": 2099,
+      "sha256": "35fa95ed466b191f3f813a56e62e196d857fd8d1a5084cb853e3339f71183619",
+      "kind": "localized-strings"
+    },
+    {
+      "path": "android/res/values-ru/tngl_terminal_strings.xml",
+      "target": "app/src/main/res/values-ru/tngl_terminal_strings.xml",
+      "bytes": 2648,
+      "sha256": "f095dc4a4147455f0f43f3e79dad9907f87465bce109148c6cd1bae3e6b88ee5",
+      "kind": "localized-strings"
+    }
+  ],
+  "kotlinFiles": [
+    "core/TerminalCommandParser.kt",
+    "core/TerminalPaletteTokens.kt"
+  ],
+  "checks": "83 pure Kotlin/JVM checks passed; Android integration and device checks not run"
+}

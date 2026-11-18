@@ -1,95 +1,60 @@
 package com.v2ray.ang.ui
 
 import android.content.Intent
-import android.os.Bundle
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import com.v2ray.ang.R
 import com.v2ray.ang.ui.base.BaseComponentActivity
 import com.v2ray.ang.ui.main.MainActivity
 import kotlinx.coroutines.delay
 
 class SplashActivity : BaseComponentActivity() {
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-    }
-
     @Composable
     override fun ScreenContent() {
-        SplashScreen(
-            onAnimationFinished = {
-                startActivity(Intent(this, MainActivity::class.java))
-                finish()
-                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
-            }
-        )
+        SplashScreen {
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        }
     }
 }
 
 @Composable
-fun SplashScreen(
-    onAnimationFinished: () -> Unit
-) {
-    val fullText = "> TangledLink"
-    var displayedText by remember { mutableStateOf("") }
-    var showCursor by remember { mutableStateOf(true) }
+fun SplashScreen(onAnimationFinished: () -> Unit) {
+    var loaded by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
+    val finish by rememberUpdatedState(onAnimationFinished)
 
-    LaunchedEffect(Unit) {
-        for (i in 1..fullText.length) {
-            displayedText = fullText.substring(0, i)
-            delay(65L)
+    // A complete loop is 9 frames at 120 ms. Start the timer after decoding,
+    // with a timeout so a failed resource load cannot trap the user here.
+    LaunchedEffect(loaded, failed) {
+        if (failed) {
+            finish()
+        } else {
+            delay(if (loaded) 1_080L else 5_000L)
+            finish()
         }
-        repeat(3) {
-            showCursor = !showCursor
-            delay(120L)
-        }
-        delay(150L)
-        onAnimationFinished()
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF121212)),
+        Modifier.fillMaxSize().background(Color(0xFF020809)),
         contentAlignment = Alignment.Center
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = displayedText,
-                color = Color(0xFF00FF66),
-                fontSize = 30.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold
-            )
-            if (showCursor) {
-                Text(
-                    text = "_",
-                    color = Color(0xFF00FF66),
-                    fontSize = 30.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+        AsyncImage(
+            model = R.raw.splash_logo,
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            onSuccess = { loaded = true },
+            onError = { failed = true },
+            modifier = Modifier.padding(32.dp).widthIn(max = 320.dp)
+                .fillMaxWidth().aspectRatio(1f)
+        )
     }
 }

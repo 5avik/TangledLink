@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<string name="email_address">Электронная почта</string>
+<string name="email_code_title">Подтверждение почты</string>
+<string name="email_code_help">Введите шесть цифр из письма. Код действует 10 минут. Его можно вставить из буфера.</string>
+<string name="email_code">Код подтверждения</string>
+<string name="email_verify">Подтвердить</string>
+<string name="email_send">Отправить код</string>
+<string name="email_resend">Отправить код повторно</string>
+<string name="email_resend_wait">Повторная отправка через %1$d с</string>
+<string name="email_invalid_code">Неверный код. Проверьте шесть цифр и попробуйте ещё раз.</string>
+<string name="email_expired_code">Срок действия кода истёк. Запросите новый код.</string>
+<string name="email_attempts">Слишком много попыток. Запросите новый код после окончания ожидания.</string>
+<string name="email_wait">Подождите перед повторной отправкой кода.</string>
+<string name="email_network_error">Не удалось выполнить подтверждение. Проверьте подключение и повторите попытку.</string>
+<string name="email_bind">Привязать почту</string>
+<string name="email_confirmed">Подтверждённая почта: %1$s</string>
+<string name="email_refresh">Загрузить статус почты</string>
+<string name="email_already_bound">Почта уже привязана. Обновите профиль.</string>
+</resources>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <size android:width="24dp" android:height="24dp" />
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+    <item android:width="22dp" android:height="20.625dp" android:gravity="center">
+        <bitmap android:src="@drawable/tngl_brand_mark"
+            android:gravity="fill" android:filter="true" android:tint="#FFFFFFFF" />
+    </item>
+</layer-list>

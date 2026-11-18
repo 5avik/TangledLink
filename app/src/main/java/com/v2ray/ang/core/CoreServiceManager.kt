@@ -53,6 +53,9 @@ object CoreServiceManager {
     private var browserDialer: IDialerService? = null
     private var networkMonitor: NetworkMonitor? = null
     private val connectionTestScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val trafficLock = Any()
+    @Volatile private var trafficSampler: TrafficSampler? = null
+    private var trafficRequestJob: kotlinx.coroutines.Job? = null
 
     @Volatile
     private var isReloading = false
@@ -153,7 +156,12 @@ object CoreServiceManager {
         if (dialerAddr.isNotNullEmpty()) {
             CoreNativeManager.reconcileBrowserDialer(dialerAddr)
         }
-        coreController.startLoop(result.content, tunFd)
+        synchronized(trafficLock) {
+            coreController.startLoop(result.content, tunFd)
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (isReload && trafficSampler != null) trafficSampler?.resetCounters(now)
+            else trafficSampler = TrafficSampler(now, java.util.UUID.randomUUID().toString())
+        }
 
         if (!isRunning()) {
             error("Core failed to start")
@@ -191,6 +199,7 @@ object CoreServiceManager {
      */
     fun stopCoreLoop(): Boolean {
         connectionTestScope.coroutineContext.cancelChildren()
+        trafficSampler = null
         val service = getService() ?: return false
 
         networkMonitor?.unregister()
@@ -200,7 +209,7 @@ object CoreServiceManager {
         if (isRunning()) {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    coreController.stopLoop()
+                    synchronized(trafficLock) { coreController.stopLoop() }
                 } catch (e: Exception) {
                     LogUtil.e(AppConfig.TAG, "StartCore-Manager: Failed to stop V2Ray loop", e)
                 }
@@ -264,7 +273,7 @@ object CoreServiceManager {
             connectionTestScope.coroutineContext.cancelChildren()
             LogUtil.i(AppConfig.TAG, "StartCore-Manager: Core reload start...")
 
-            coreController.stopLoop()
+            synchronized(trafficLock) { coreController.stopLoop() }
             launchCore(service, tunFd, isReload = true)
 
             LogUtil.i(AppConfig.TAG, "StartCore-Manager: Core reload finished")
@@ -279,11 +288,38 @@ object CoreServiceManager {
         }
     }
 
+    /** One shared counter reader for the foreground notification and UI; daemon only. */
+    fun trafficSnapshot(): com.v2ray.ang.dto.TrafficSnapshot? = synchronized(trafficLock) {
+        if (!isRunning()) return@synchronized null
+        try {
+            trafficSampler?.sample(android.os.SystemClock.elapsedRealtime(), ::queryAllOutboundTrafficStats)
+        } catch (error: Exception) {
+            LogUtil.e(AppConfig.TAG, "Traffic read [${getService()?.javaClass?.simpleName}] profile=${MmkvManager.getSelectServer()}: native counters failed", error)
+            null
+        }
+    }
+
+    private fun sendTrafficSnapshot() {
+        val service = getService() ?: return
+        if (trafficRequestJob?.isActive == true) return
+        trafficRequestJob = connectionTestScope.launch {
+            try {
+                val snapshot = trafficSnapshot() ?: return@launch
+                ensureActive()
+                MessageHelper.sendMsg2UI(service, AppConfig.MSG_TRAFFIC_SAMPLE, snapshot)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                LogUtil.e(AppConfig.TAG, "Traffic publish [${service.javaClass.simpleName}] profile=${MmkvManager.getSelectServer()}: UI delivery failed", error)
+            }
+        }
+    }
+
     /**
      * Queries and resets all outbound traffic counters in one core call.
      * Go side format: tag,direction,value;tag,direction,value;
      */
-    fun queryAllOutboundTrafficStats(): List<OutboundTrafficStat> {
+    private fun queryAllOutboundTrafficStats(): List<OutboundTrafficStat> {
         // The stats manager is gone once the core stops, querying it then reaches into freed state.
         if (!isRunning()) return emptyList()
 
@@ -497,6 +533,12 @@ object CoreServiceManager {
                             pendingResult.finish()
                         }
                     }
+                }
+
+                AppConfig.MSG_QUERY_TRAFFIC -> {
+                    if (isOrderedBroadcast) resultCode = Activity.RESULT_OK
+                    if (isRunning()) sendTrafficSnapshot()
+                    else MessageHelper.sendMsg2UI(serviceControl.getService(), AppConfig.MSG_STATE_NOT_RUNNING, "")
                 }
 
                 AppConfig.MSG_MEASURE_DELAY -> {

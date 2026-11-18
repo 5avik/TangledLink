@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="motion_service_running">VPN-сервис запущен</string>
+    <string name="motion_service_stopped">VPN-сервис остановлен</string>
+    <string name="motion_service_starting">Запуск VPN-сервиса…</string>
+    <string name="motion_service_error">Ошибка VPN-сервиса</string>
+</resources>

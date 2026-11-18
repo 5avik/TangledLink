@@ -1,5 +1,10 @@
 package com.v2ray.ang.ui.main
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.BorderStroke
+import com.v2ray.ang.ui.compose.BrandButton
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,17 +41,22 @@ fun MainBottomBar(
     onAction: (MainAction) -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
+    val panelColor by animateColorAsState(
+        if (isRunning) colors.primaryContainer else colors.surfaceContainerLow,
+        animationSpec = tween(450), label = "connectionPanel"
+    )
     Surface(color = colors.surface) {
         Surface(
             modifier = Modifier
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(28.dp),
-            color = colors.primaryContainer
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, colors.outlineVariant),
+            color = panelColor
         ) {
             Column(
                 modifier = Modifier
-                    .background(Brush.horizontalGradient(listOf(colors.primaryContainer, colors.secondaryContainer)))
+                    .background(Brush.linearGradient(listOf(panelColor, colors.surface)))
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -66,12 +75,12 @@ fun MainBottomBar(
                             stringResource(if (isRunning) R.string.home_vpn_on else R.string.home_vpn_off),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = colors.onPrimaryContainer
+                            color = colors.onSurface
                         )
                         Text(
                             displayText,
                             style = MaterialTheme.typography.bodySmall,
-                            color = colors.onPrimaryContainer,
+                            color = colors.onSurface,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -82,10 +91,9 @@ fun MainBottomBar(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
+                    BrandButton(
                         onClick = { onAction(MainAction.ToggleService) },
-                        modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                        shape = RoundedCornerShape(16.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 52.dp)
                     ) {
                         Icon(
                             painterResource(if (isRunning) R.drawable.ic_stop_24dp else R.drawable.ic_play_24dp),

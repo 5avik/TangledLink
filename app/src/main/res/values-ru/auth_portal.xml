@@ -1,0 +1,4 @@
+<resources>
+    <string name="auth_portal_welcome">Добро пожаловать!</string>
+    <string name="auth_portal_checking">Проверяем данные…</string>
+</resources>

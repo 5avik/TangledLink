@@ -29,6 +29,7 @@ private enum class ImportMenuAction(@StringRes val labelRes: Int, val action: Ma
 enum class MainMoreMenuAction(@StringRes val labelRes: Int) {
     UpdateSubscriptions(R.string.title_sub_update),
     ChangeAccount(R.string.tngl_change_account),
+    ChangePassword(R.string.auth_change_password),
     RoutingSettings(R.string.routing_settings_title)
 }
 

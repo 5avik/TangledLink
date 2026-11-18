@@ -81,17 +81,8 @@ object UpdateCheckerManager {
         }
     }
 
-    private fun compareVersions(version1: String, version2: String): Int {
-        val v1 = version1.split(".")
-        val v2 = version2.split(".")
-
-        for (i in 0 until maxOf(v1.size, v2.size)) {
-            val num1 = v1.getOrNull(i)?.toIntOrNull() ?: 0
-            val num2 = v2.getOrNull(i)?.toIntOrNull() ?: 0
-            if (num1 != num2) return num1 - num2
-        }
-        return 0
-    }
+    private fun compareVersions(version1: String, version2: String): Int =
+        compareReleaseVersions(version1, version2)
 
     private fun getDownloadUrl(release: GitHubRelease, abi: String): String {
         if (release.assets.isEmpty()) return ""

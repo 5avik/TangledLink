@@ -1,11 +1,11 @@
 package com.v2ray.ang.ui.main
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.platform.app.InstrumentationRegistry
 import com.v2ray.ang.R
@@ -14,27 +14,66 @@ import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
-class TnglLoginDialogTest {
-    @get:Rule
-    val compose = createComposeRule()
+@androidx.compose.runtime.Composable
+private fun StaticAuthTheme(content: @androidx.compose.runtime.Composable () -> Unit) {
+    androidx.compose.runtime.CompositionLocalProvider(com.v2ray.ang.ui.compose.LocalReduceEffects provides true) {
+        MaterialTheme(content = content)
+    }
+}
 
-    @Test
-    fun dialogFocusesInputAndRejectsEmptyToken() {
+class TnglLoginDialogTest {
+    @get:Rule val compose = createComposeRule()
+
+    @Test fun registrationIsVisibleAndDisabled() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        var submitted: String? = null
+        compose.setContent { StaticAuthTheme { TnglLoginDialog(onConfirm = { _, _, _ -> }) } }
+        compose.onNodeWithText(context.getString(R.string.auth_registration))
+            .performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test fun registrationSubmitsOnlyToRegistrationAction() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        var submitted: Pair<String,String>? = null
         compose.setContent {
-            MaterialTheme {
-                TnglLoginDialog(onConfirm = { submitted = it })
+            StaticAuthTheme {
+                TnglLoginDialog(onRegister={id,password,email->assertEquals("buyer@example.com",email);submitted=id to password},
+                    onConfirm={_,_,_->throw AssertionError("Registration must not log in or activate")})
             }
         }
+        compose.onNodeWithText(context.getString(R.string.auth_registration)).performScrollTo().performClick()
+        compose.onNodeWithText(context.getString(R.string.auth_id)).performTextInput("new-user")
+        compose.onNodeWithText(context.getString(R.string.auth_password)).performTextInput("test-password-123")
+        compose.onNodeWithText(context.getString(R.string.email_address)).performScrollTo().performTextInput("buyer@example.com")
+        compose.onNodeWithText(context.getString(R.string.registration_submit)).performScrollTo().performClick()
+        compose.runOnIdle { assertEquals("new-user" to "test-password-123",submitted) }
+    }
 
-        compose.onNode(hasSetTextAction()).assertIsFocused()
-        compose.onNodeWithText(context.getString(R.string.tngl_login_button)).performClick()
-        compose.onNodeWithText(context.getString(R.string.tngl_login_empty_error)).assertExists()
-        compose.runOnIdle { assertNull(submitted) }
+    @Test fun loginSubmitsCredentialsWithoutActivationCode() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        var submitted: Triple<String, String, String?>? = null
+        compose.setContent {
+            StaticAuthTheme {
+                TnglLoginDialog(onConfirm = { id, password, code -> submitted = Triple(id, password, code) })
+            }
+        }
+        compose.onNodeWithText(context.getString(R.string.auth_id)).performTextInput("example123")
+        compose.onNodeWithText(context.getString(R.string.auth_password)).performTextInput("local-password")
+        compose.onNodeWithText(context.getString(R.string.tngl_login_button)).performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals("example123", submitted?.first)
+            assertEquals("local-password", submitted?.second)
+            assertNull(submitted?.third)
+        }
+    }
 
-        compose.onNode(hasSetTextAction()).performTextInput("  local-test-token  ")
-        compose.onNodeWithText(context.getString(R.string.tngl_login_button)).performClick()
-        compose.runOnIdle { assertEquals("local-test-token", submitted) }
+    @Test fun forgottenPasswordOpensRecoveryInsteadOfFirstActivation() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        var opened = false
+        compose.setContent {
+            StaticAuthTheme { TnglLoginDialog(onForgot = { opened = true }, onConfirm = { _, _, _ -> }) }
+        }
+        compose.onNodeWithText(context.getString(R.string.auth_activate)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.recovery_title)).performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(true, opened) }
     }
 }

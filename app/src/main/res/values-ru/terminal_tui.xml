@@ -1,0 +1,7 @@
+<resources>
+    <string name="terminal_tui_node">Узел</string>
+    <string name="terminal_tui_rx">RX · Загрузка</string>
+    <string name="terminal_tui_tx">TX · Отдача</string>
+    <string name="terminal_tui_peak">Пик RX+TX</string>
+    <string name="terminal_tui_elapsed">%1$02d:%2$02d:%3$02d</string>
+</resources>

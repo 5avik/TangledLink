@@ -15,6 +15,9 @@ import com.v2ray.ang.dto.entities.ProfileItem
 import com.v2ray.ang.dto.entities.ServersCache
 import com.v2ray.ang.dto.entities.SubscriptionCache
 import com.v2ray.ang.dto.entities.SubscriptionItem
+import com.v2ray.ang.handler.TnglAuthClient
+import com.v2ray.ang.handler.TnglSessionStore
+import com.v2ray.ang.handler.TnglAuthException
 import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.extension.delay
 import com.v2ray.ang.extension.isComplexType
@@ -36,6 +39,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -74,6 +82,16 @@ class MainViewModel(
     private val dataSource: MainDataSource
 ) : BaseViewModel(application) {
 
+    internal val connectionGate = com.v2ray.ang.ui.terminal.ConnectionRequestGate()
+    internal val terminal by lazy { com.v2ray.ang.ui.terminal.TerminalCommandHandler(viewModelScope,
+        com.v2ray.ang.ui.compose.ThemeManager, {uiState.value},
+        {serverGroupState(uiState.value.selectedGroupId).value.rows},
+        {connectionGate.pending || uiState.value.isConnecting}, {dataSource.getString(it)},
+        android.os.Build.MODEL, com.v2ray.ang.BuildConfig.VERSION_NAME) }
+    fun connectionRequestFinished() {
+        connectionGate.finished()
+        _uiState.update { it.copy(isConnecting = false) }
+    }
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
     private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default
     private val preloadDispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1)
@@ -88,6 +106,60 @@ class MainViewModel(
         )
     )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    private val recovery=MutableStateFlow<RecoveryState?>(null)
+    internal val recoveryState=recovery.asStateFlow()
+    private var recoveryRequest:MainAction.RequestRecovery?=null
+    private var recoveryJob:kotlinx.coroutines.Job?=null
+
+    private fun recoveryCall(request:MainAction.RequestRecovery,code:String?=null,password:String?=null) {
+        val current=recovery.value?:return
+        if(current.busy || (code==null && System.currentTimeMillis()<current.resendAt))return
+        recovery.value=current.copy(busy=true,error=null)
+        recoveryRequest=request
+        recoveryJob=viewModelScope.launch {
+            try {
+                val result=withContext(ioDispatcher){
+                    TnglAuthClient.recoverPassword(request.id.trim(),request.email,request.invite,code,password)
+                }
+                val step = recoveryResponseStep(result.optString("step"),
+                    result.optBoolean("emailRequired"), result.optBoolean("ok"), code != null)
+                    ?: throw TnglAuthException("recovery_unconfirmed")
+                if (step == "done") recoveryRequest = null
+                recovery.value = RecoveryState(step = step,
+                    resendAt = if (step == "code")
+                        System.currentTimeMillis() + result.optLong("retryAfterSeconds", 60).coerceAtLeast(0) * 1000
+                    else 0)
+            }catch(e:CancellationException){throw e}
+            catch(e:Exception){
+                val api=e as? TnglAuthException
+                recovery.value=current.copy(error=api?.errorCode?:"network",
+                    resendAt=api?.retryAfterSeconds?.let{System.currentTimeMillis()+it*1000}?:current.resendAt)
+            }
+        }
+    }
+
+    internal val emailVerification = EmailVerificationController(viewModelScope,ioDispatcher)
+    private val billing = BillingController(viewModelScope, ioDispatcher,
+        com.v2ray.ang.handler.TnglBillingClient, onPaid = { refreshAccountAccess(); updateTnglSubscription() })
+    private val premiumStore = PremiumStore(application)
+    internal val premiumState = premiumStore.state.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PremiumPreferences())
+    private val browserInput = MutableStateFlow(PremiumBrowserInput())
+    internal val premiumBrowserInput = browserInput.asStateFlow()
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    internal val premiumBrowserState = _uiState.map { it.selectedGroupId }.distinctUntilChanged()
+        .flatMapLatest { groupId ->
+            combine(serverGroupState(groupId), premiumState, browserInput) { group, preferences, input ->
+                withContext(defaultDispatcher) {
+                    PremiumBrowserState(input, filterPremiumServers(
+                        group.rows, input, preferences.favorites,
+                        countryFlags.mapValues { dataSource.getString(it.value) }
+                    ))
+                }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PremiumBrowserState())
+    private var billingReturnPending = false
+    val billingState = billing.uiState
+    val billingPaymentEvents = billing.paymentEvents
 
     // ---------- Keyword filtering ----------
     @Volatile
@@ -130,6 +202,9 @@ class MainViewModel(
 
     private fun handleServiceEvent(event: MainServiceEvent) {
         when (event) {
+            is MainServiceEvent.Traffic -> _uiState.update { state ->
+                if (state.isRunning) state.copy(traffic = state.traffic.receive(event.snapshot)) else state
+            }
             MainServiceEvent.StateRunning -> updateRunningState(true, clearTestingText = false)
             MainServiceEvent.StateNotRunning -> updateRunningState(false, clearTestingText = false)
             MainServiceEvent.StateStartSuccess -> {
@@ -138,6 +213,7 @@ class MainViewModel(
             }
 
             is MainServiceEvent.StateStartFailure -> {
+                connectionRequestFinished()
                 if (!event.message.isNullOrBlank()) {
                     toastError(event.message)
                 } else {
@@ -146,7 +222,7 @@ class MainViewModel(
                 updateRunningState(false)
             }
 
-            MainServiceEvent.StateStopSuccess -> updateRunningState(false)
+            MainServiceEvent.StateStopSuccess -> { connectionRequestFinished(); updateRunningState(false) }
             is MainServiceEvent.MeasureDelayResult -> {
                 if (!uiState.value.isRunning || !testRequests.completeCurrent(event.requestId)) return
                 _uiState.update { it.copy(isTesting = testRequests.isTesting, status = MainStatus.ConnectionTest(event.result)) }
@@ -277,6 +353,11 @@ class MainViewModel(
     // ---------- Action handler ----------
     fun onAction(action: MainAction) {
         when (action) {
+            is MainAction.TerminalInput -> terminal.input(action.value)
+            is MainAction.TerminalHistory -> terminal.history(action.delta)
+            MainAction.TerminalComplete -> terminal.complete()
+            is MainAction.OpenTerminal -> terminal.open(action.page)
+            MainAction.TerminalSubmit -> Unit
             MainAction.Initialize -> initialize()
             MainAction.RefreshGroups -> setupGroupTab(forceRefresh = true)
             MainAction.TestAllServers -> testAllRealPing(true)
@@ -286,10 +367,39 @@ class MainViewModel(
             MainAction.RemoveDuplicateServers -> removeDuplicateServerAsync()
             MainAction.RemoveInvalidServers -> removeInvalidServerAsync()
             MainAction.SortByTestResults -> sortByTestResultsAsync()
-            MainAction.UpdateSubscriptions -> updateTnglSubscription()
+            MainAction.UpdateSubscriptions -> { refreshAccountAccess(); updateTnglSubscription() }
+            MainAction.StartTrial -> startTrial()
+            MainAction.RefreshAccount -> refreshAccountAccess()
             is MainAction.UpdateGroupSubscription -> updateTnglSubscription()
             MainAction.ChangeAccount -> changeAccount()
-            is MainAction.SubmitTnglToken -> submitTnglToken(action.token)
+            is MainAction.SubmitTnglCredentials -> submitCredentials(action)
+            is MainAction.SubmitEmailCode -> emailVerification.submit(action.code)
+            MainAction.ResendEmailCode -> emailVerification.resend()
+            MainAction.CancelEmailCode -> emailVerification.cancel()
+            MainAction.OpenRecovery -> recovery.update{RecoveryState()}
+            MainAction.CloseRecovery -> { recoveryJob?.cancel(); recoveryRequest=null; recovery.value=null }
+            is MainAction.RequestRecovery -> recoveryCall(
+                if(recovery.value?.step=="code") recoveryRequest?:action else action)
+            is MainAction.FinishRecovery -> {
+                val current=recovery.value
+                if(current?.step=="code" && !current.busy) {
+                    val error=when {
+                        action.password.length !in 12..128 -> "password_policy"
+                        action.password!=action.confirmation -> "password_mismatch"
+                        !Regex("[0-9]{6}").matches(action.code) -> "invalid_email_code"
+                        else -> null
+                    }
+                    if(error!=null)recovery.value=current.copy(error=error)
+                    else recoveryRequest?.let{recoveryCall(it,action.code,action.password)}
+                }
+            }
+            MainAction.RefreshEmail -> refreshEmail()
+            MainAction.ShowBindEmail -> { emailVerification.cancel(); _uiState.update{it.copy(showBindEmail=true)} }
+            MainAction.DismissBindEmail -> { emailVerification.cancel(); _uiState.update{it.copy(showBindEmail=false)} }
+            is MainAction.BindEmail -> bindEmail(action.email)
+            MainAction.ShowPasswordDialog -> _uiState.update { it.copy(showPasswordDialog = true, authError = null) }
+            MainAction.DismissPasswordDialog -> if (!uiState.value.authBusy) _uiState.update { it.copy(showPasswordDialog = false, authError = null) }
+            is MainAction.ChangePassword -> changePassword(action.current, action.newPassword)
             MainAction.ExportAll -> exportAllAsync()
             is MainAction.SelectGroup -> subscriptionIdChanged(action.groupId)
             is MainAction.SelectServer -> updateSelectedGuid(action.guid)
@@ -306,10 +416,41 @@ class MainViewModel(
                 _uiState.update { it.copy(shareQRCodeBitmap = null) }
             }
 
+            is MainAction.ToggleFavorite -> viewModelScope.launch { runCatching { premiumStore.toggle(action.guid) }.onFailure { toastError(R.string.toast_failure) } }
+            is MainAction.SelectPremiumPlan -> viewModelScope.launch { runCatching { premiumStore.select(action.months) }.onFailure { toastError(R.string.toast_failure) } }
+            is MainAction.SetConnectOnLaunch -> viewModelScope.launch {
+                try { premiumStore.setConnectOnLaunch(action.enabled) }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (error: Exception) { toastError(R.string.toast_failure) }
+            }
+            is MainAction.SearchPremiumServers -> browserInput.update { it.copy(query = action.query) }
+            is MainAction.FilterPremiumServers -> if (action.filter in 0..2) browserInput.update { it.copy(filter = action.filter) }
+            is MainAction.SetLanguage -> if (action.code in setOf("ru", "en")) {
+                com.v2ray.ang.handler.AppLocaleManager.setApplicationLanguage(action.code)
+            }
+            is MainAction.BillingEmail -> billing.email(action.value)
+            is MainAction.BillingPromoCode -> billing.promoCode(action.value)
+            is MainAction.BillingPlanSelected -> billing.selectPlan(action.id)
+            is MainAction.BeginBilling -> if (action.months in listOf(1,3,6,12)) billing.open("month" + action.months * 30)
+            MainAction.ReturnFromBilling -> {
+                billingReturnPending = true
+                if (!TnglSessionStore.token().isNullOrBlank()) {
+                    billingReturnPending = false
+                    billing.returnFromPayment()
+                } else _uiState.update { it.copy(showTnglLoginDialog = true) }
+            }
+            MainAction.ShowBilling -> billing.open("month" + premiumState.value.months * 30)
+            MainAction.DismissBilling -> billing.close()
+            MainAction.CreateBillingOrder -> billing.create()
+            MainAction.RefreshBilling -> billing.refresh()
+            MainAction.OpenBillingPayment -> billing.pay()
+
             MainAction.DismissUpdateDialog -> {
                 _uiState.update { it.copy(showTnglUpdateDialog = false) }
             }
 
+            MainAction.OpenSystemVpnSettings,
+            MainAction.OpenNotificationSettings,
             MainAction.ToggleService,
             MainAction.TestCurrentServer,
             MainAction.ImportQRcode,
@@ -330,6 +471,7 @@ class MainViewModel(
 
     // ---------- Initialization ----------
     fun initialize() {
+        refreshAccountAccess()
         viewModelScope.launch(preloadDispatcher) {
             try {
                 initialPageReady.await()
@@ -485,6 +627,16 @@ class MainViewModel(
                     MmkvManager.removeSubscription(AppConfig.DEFAULT_SUBSCRIPTION_ID)
                 }
 
+                // Retire the old ID-only subscription URL before background updates run.
+                MmkvManager.setTnglUserToken(null)
+                MmkvManager.decodeSubscription(AppConfig.TNGL_SUB_ID)?.let { item ->
+                    if (item.url != TnglAuthClient.SUBSCRIPTION_URL) {
+                        item.url = TnglAuthClient.SUBSCRIPTION_URL
+                        item.requestHeaders = null
+                        item.usageInfo = null
+                        MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, item)
+                    }
+                }
                 val groups = dataSource.getSubscriptions()
                     .filter { it.guid != AppConfig.DEFAULT_SUBSCRIPTION_ID || dataSource.getServerGuidList(it.guid).isNotEmpty() }
                     .map {
@@ -502,9 +654,8 @@ class MainViewModel(
                 groupServerFlows.keys.removeAll { it !in validIds }
                 groupLoadMutexes.keys.removeAll { it !in validIds }
 
-                val token = MmkvManager.getTnglUserToken()
-                val tnglServers = dataSource.getServerGuidList(AppConfig.TNGL_SUB_ID)
-                val needLogin = token.isNullOrBlank() || tnglServers.isEmpty()
+                val token = TnglSessionStore.token()
+                val needLogin = token.isNullOrBlank()
 
                 _uiState.update {
                     it.copy(
@@ -551,53 +702,147 @@ class MainViewModel(
         }.also { setupGroupJob = it }
     }
 
-    private fun submitTnglToken(token: String) {
-        val cleanToken = token.trim()
-        if (cleanToken.isEmpty()) {
-            toast(R.string.tngl_login_empty_error)
+    private fun authMessage(error: Exception): Int = when ((error as? TnglAuthException)?.errorCode) {
+        "account_exists" -> R.string.registration_exists
+        "registration_invalid_id" -> R.string.registration_id_rule
+        "registration_pending" -> R.string.registration_retry
+        "trial_unavailable" -> R.string.registration_trial_unavailable
+        "invalid_credentials" -> R.string.auth_invalid_credentials
+        "session_expired" -> R.string.auth_session_expired
+        "subscription_inactive" -> R.string.auth_subscription_inactive
+        "password_policy" -> R.string.auth_password_policy
+        "rate_limited" -> R.string.auth_rate_limited
+        else -> R.string.auth_server_error
+    }
+
+    private fun refreshAccountAccess() {
+        val token = TnglSessionStore.token() ?: return
+        viewModelScope.launch {
+            try {
+                val access = withContext(ioDispatcher) { TnglAuthClient.accountStatus(token) }
+                if (TnglSessionStore.token() == token) _uiState.update { it.copy(accountAccess=access,trialError=null) }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) { _uiState.update { it.copy(trialError=authMessage(error)) } }
+        }
+    }
+
+    private fun startTrial() {
+        if (uiState.value.trialBusy) return
+        val token = TnglSessionStore.token() ?: return
+        _uiState.update { it.copy(trialBusy=true,trialError=null) }
+        viewModelScope.launch {
+            try {
+                withContext(ioDispatcher) { TnglAuthClient.startTrial(token) }
+                val access = withContext(ioDispatcher) { TnglAuthClient.accountStatus(token) }
+                if (TnglSessionStore.token() == token) {
+                    _uiState.update { it.copy(accountAccess=access) }
+                    updateTnglSubscription()
+                }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) { _uiState.update { it.copy(trialError=authMessage(error)) } }
+            finally { _uiState.update { it.copy(trialBusy=false) } }
+        }
+    }
+
+    private fun submitCredentials(action: MainAction.SubmitTnglCredentials) {
+        if (uiState.value.authBusy) return
+        val validation = if (action.registration) AuthValidation.registration(action.id, action.password)
+            else AuthValidation.credentials(action.id, action.password, action.activationCode)
+        if (validation != null) {
+            _uiState.update { it.copy(authError = validation) }
             return
         }
-        MmkvManager.setTnglUserToken(cleanToken)
+        _uiState.update { it.copy(authError = null) }
+        emailVerification.start({ code ->
+            TnglAuthClient.emailAuthentication(action.id.trim(),action.password,action.email,
+                action.registration,action.activationCode?.trim(),code)
+        }) { result ->
+            TnglAuthClient.acceptEmailSession(result)
+            finishCredentials(action.id.trim())
+        }
+    }
 
-        val subItem = SubscriptionItem(
-            remarks = AppConfig.TNGL_SUB_REMARKS,
-            url = AppConfig.TNGL_SUB_BASE_URL + cleanToken,
-            enabled = true,
-            autoUpdate = true
-        )
-        MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
-
-        launchLoading {
-            withContext(ioDispatcher) {
-                try {
-                    val subCache = SubscriptionCache(AppConfig.TNGL_SUB_ID, subItem)
-                    val result = dataSource.updateConfigViaSub(subCache)
-                    if (result.configCount > 0) {
-                        val servers = dataSource.getServerGuidList(AppConfig.TNGL_SUB_ID)
-                        if (servers.isNotEmpty()) {
-                            val currentSelected = dataSource.getSelectServer()
-                            if (currentSelected.isNullOrBlank() || currentSelected !in servers) {
-                                dataSource.setSelectServer(servers[0])
-                            }
-                        }
-                        _uiState.update { it.copy(showTnglLoginDialog = false) }
-                        setupGroupTab(forceRefresh = true)
-                        refreshSelectedGuid()
-                    } else {
-                        toast(R.string.tngl_error_invalid_token)
-                    }
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (e: Exception) {
-                    LogUtil.e(AppConfig.TAG, "TangledLink token submit failed", e)
-                    toast(R.string.tngl_error_invalid_token)
+    private fun finishCredentials(login:String) {
+        _uiState.update { it.copy(authBusy = true, authError = null) }
+        viewModelScope.launch {
+            try {
+                withContext(ioDispatcher) {
+                    MmkvManager.setTnglUserToken(null)
+                    val subItem = SubscriptionItem(
+                        remarks = login,
+                        url = TnglAuthClient.SUBSCRIPTION_URL, enabled = true, autoUpdate = true
+                    )
+                    MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
+                    // Authentication remains valid for an expired subscription: the owner
+                    // must be able to reach renewal even when configs cannot be loaded.
+                    try {
+                        dataSource.updateConfigViaSub(SubscriptionCache(AppConfig.TNGL_SUB_ID, subItem))
+                    } catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: java.io.IOException) { /* Config access is separate from account access. */ }
+                    val servers = dataSource.getServerGuidList(AppConfig.TNGL_SUB_ID)
+                    if (dataSource.getSelectServer() !in servers) servers.firstOrNull()?.let(dataSource::setSelectServer)
                 }
+                val access = withContext(ioDispatcher) { runCatching { TnglAuthClient.accountStatus() }.getOrDefault(com.v2ray.ang.handler.AccountAccess()) }
+                _uiState.update { it.copy(showTnglLoginDialog = false, authSuccessSequence = it.authSuccessSequence + 1, accountAccess = access, verifiedEmail = null, emailLoaded = false, showBindEmail = false) }
+                if (billingReturnPending) {
+                    billingReturnPending = false
+                    billing.returnFromPayment()
+                }
+                setupGroupTab(forceRefresh = true)
+                refreshSelectedGuid()
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) { _uiState.update { it.copy(authError = authMessage(error)) } }
+            finally { _uiState.update { it.copy(authBusy = false) } }
+        }
+    }
+
+    private fun refreshEmail() {
+        val token=TnglSessionStore.token()?:return
+        viewModelScope.launch {
+            try {
+                val address=withContext(ioDispatcher){TnglAuthClient.verifiedEmail(token)}
+                if(TnglSessionStore.token()==token)_uiState.update{it.copy(verifiedEmail=address,emailLoaded=true)}
+            } catch(e:CancellationException){throw e}
+            catch(_:Exception){if(TnglSessionStore.token()==token)_uiState.update{it.copy(emailLoaded=false)}}
+        }
+    }
+    private fun bindEmail(address:String) {
+        val token=TnglSessionStore.token()?:return
+        emailVerification.start({code->
+            if(TnglSessionStore.token()!=token)throw TnglAuthException("session_expired")
+            TnglAuthClient.bindEmail(address,code,token)
+        }) {
+            if(TnglSessionStore.token()==token) {
+                _uiState.update{it.copy(showBindEmail=false)}
+                refreshEmail()
             }
         }
     }
 
+    private fun changePassword(current: String, newPassword: String) {
+        if (uiState.value.authBusy) return
+        val validation = AuthValidation.passwordChange(current, newPassword)
+        if (validation != null) {
+            _uiState.update { it.copy(authError = validation) }
+            return
+        }
+        _uiState.update { it.copy(authBusy = true, authError = null) }
+        viewModelScope.launch {
+            try {
+                withContext(ioDispatcher) { TnglAuthClient.changePassword(current, newPassword) }
+                _uiState.update { it.copy(showPasswordDialog = false) }
+                toast(R.string.auth_password_changed)
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) { _uiState.update { it.copy(authError = authMessage(error)) } }
+            finally { _uiState.update { it.copy(authBusy = false) } }
+        }
+    }
+
     private fun changeAccount() {
+        emailVerification.cancel()
+        _uiState.update{it.copy(verifiedEmail=null,emailLoaded=false,showBindEmail=false)}
         viewModelScope.launch(ioDispatcher) {
+            TnglAuthClient.logout()
             MmkvManager.setTnglUserToken(null)
             MmkvManager.removeSubscription(AppConfig.TNGL_SUB_ID)
             MmkvManager.removeServerViaSubid(AppConfig.TNGL_SUB_ID)
@@ -608,7 +853,7 @@ class MainViewModel(
     }
 
     private fun updateTnglSubscription() {
-        val token = MmkvManager.getTnglUserToken()
+        val token = TnglSessionStore.token()
         if (token.isNullOrBlank()) {
             _uiState.update { it.copy(showTnglLoginDialog = true) }
             return
@@ -618,14 +863,13 @@ class MainViewModel(
         if (subItem == null) {
             subItem = SubscriptionItem(
                 remarks = AppConfig.TNGL_SUB_REMARKS,
-                url = AppConfig.TNGL_SUB_BASE_URL + token.trim(),
+                url = TnglAuthClient.SUBSCRIPTION_URL,
                 enabled = true,
                 autoUpdate = true
             )
             MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
         } else {
-            subItem.url = AppConfig.TNGL_SUB_BASE_URL + token.trim()
-            subItem.remarks = AppConfig.TNGL_SUB_REMARKS
+            subItem.url = TnglAuthClient.SUBSCRIPTION_URL
             subItem.autoUpdate = true
             MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
         }
@@ -659,7 +903,11 @@ class MainViewModel(
                     throw cancelled
                 } catch (e: Exception) {
                     LogUtil.e(AppConfig.TAG, "TangledLink subscription update failed", e)
-                    toast(R.string.tngl_error_invalid_token)
+                    toast(authMessage(e))
+                } finally {
+                    if (TnglSessionStore.token() == null) {
+                        _uiState.update { it.copy(showTnglLoginDialog = true, authError = R.string.auth_session_expired) }
+                    }
                 }
             }
         }
@@ -1079,12 +1327,55 @@ class MainViewModel(
         _uiState.update { it.copy(locateTarget = null) }
     }
 
+    internal suspend fun shouldConnectOnLaunch(): Boolean {
+        initialPageReady.await()
+        return canConnectOnLaunch(premiumStore.state.first(), uiState.value)
+    }
+
     // ---------- Running state ----------
+    private var trafficPolling: Job? = null
+
+    fun observeTraffic(visible: Boolean) {
+        trafficPolling?.cancel()
+        trafficPolling = null
+        if (!visible) return
+        trafficPolling = viewModelScope.launch {
+            dataSource.sendMsg2Service(AppConfig.MSG_REGISTER_CLIENT, "")
+            uiState.map { it.isRunning }.distinctUntilChanged().collectLatest { running ->
+                if (running) while (true) {
+                    dataSource.sendMsg2Service(AppConfig.MSG_QUERY_TRAFFIC, "")
+                    delay(1_000L)
+                }
+            }
+        }
+    }
+
+    private var connectionTimeout: Job? = null
+
+    fun connectionStarting() {
+        connectionTimeout?.cancel()
+        _uiState.update { it.copy(isConnecting = true) }
+        connectionTimeout = viewModelScope.launch {
+            delay(30_000)
+            if (uiState.value.isConnecting) {
+                // Timeout only ends the UI spinner; a native result still owns the request gate.
+                _uiState.update { it.copy(isConnecting = false) }
+                toastError(R.string.toast_services_failure)
+            }
+        }
+    }
+
     private fun updateRunningState(running: Boolean, clearTestingText: Boolean = true) {
+        connectionGate.observed(running)
+        terminal.observe(running)
+        connectionTimeout?.cancel()
+        connectionTimeout = null
         if (!running || clearTestingText) testRequests.invalidateCurrent()
         _uiState.update { state ->
             state.copy(
                 isRunning = running,
+                isConnecting = false,
+                traffic = if (running) state.traffic else TrafficUiState(),
                 isTesting = testRequests.isTesting,
                 status = if (!clearTestingText && state.isRunning == running) state.status
                 else if (running) MainStatus.Connected else MainStatus.Disconnected

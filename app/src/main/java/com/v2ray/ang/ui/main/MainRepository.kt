@@ -49,6 +49,9 @@ class MainRepository(
             val safeIntent = intent ?: return
             val requestId = safeIntent.getStringExtra(MessageHelper.EXTRA_REQUEST_ID).orEmpty()
             val event = when (safeIntent.getIntExtra("key", 0)) {
+                AppConfig.MSG_TRAFFIC_SAMPLE -> safeIntent
+                    .serializable<com.v2ray.ang.dto.TrafficSnapshot>("content")
+                    ?.takeIf { it.isValid }?.let { MainServiceEvent.Traffic(it) }
                 AppConfig.MSG_STATE_RUNNING -> MainServiceEvent.StateRunning
                 AppConfig.MSG_STATE_NOT_RUNNING -> MainServiceEvent.StateNotRunning
                 AppConfig.MSG_STATE_START_SUCCESS -> MainServiceEvent.StateStartSuccess
@@ -207,8 +210,17 @@ class MainRepository(
     override fun share2Clipboard(guid: String): Boolean =
         AngConfigManager.share2Clipboard(app, guid) == 0
 
-    override fun sendMsg2Service(msgId: Int, content: String) =
-        MessageHelper.sendMsg2Service(app, msgId, content)
+    override fun sendMsg2Service(msgId: Int, content: String) {
+        if (msgId == AppConfig.MSG_QUERY_TRAFFIC) {
+            MessageHelper.sendMsg2ServiceForResult(app, msgId, content) { handled ->
+                if (!handled && !closed.get()) {
+                    mainServiceEventChannel.trySend(MainServiceEvent.StateNotRunning)
+                }
+            }
+        } else {
+            MessageHelper.sendMsg2Service(app, msgId, content)
+        }
+    }
 
     override fun sendMsg2TestService(msg: TestServiceMessage, requestId: String?) =
         MessageHelper.sendMsg2TestService(app, msg, requestId)

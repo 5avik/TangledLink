@@ -149,6 +149,9 @@ object HttpUtil {
         request: UrlContentRequest,
         onResponseHeaders: ((Headers) -> Unit)? = null
     ): String {
+        if (request.url == com.v2ray.ang.handler.TnglAuthClient.SUBSCRIPTION_URL) {
+            return com.v2ray.ang.handler.TnglAuthClient.subscription(onResponseHeaders)
+        }
         var currentUrl = request.url
         var redirects = 0
         val maxRedirects = 3

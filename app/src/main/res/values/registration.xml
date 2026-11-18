@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="registration_exists">This login is already in use.</string>
+    <string name="registration_id_rule">Login: 3–32 lowercase Latin letters, digits, underscores or hyphens. Password: 12–128 characters.</string>
+    <string name="registration_retry">Registration is incomplete. Open Registration and retry with the same login and password.</string>
+    <string name="registration_trial_unavailable">The trial is unavailable or has already been used.</string>
+    <string name="registration_submit">Create account</string>
+    <string name="registration_no_subscription">No subscription purchased</string>
+    <string name="registration_trial_help">Try the subscription for 30 days. The period starts when you activate it, once per account.</string>
+    <string name="registration_trial_start">Try for 30 days</string>
+    <string name="registration_buy">Buy subscription</string>
+</resources>

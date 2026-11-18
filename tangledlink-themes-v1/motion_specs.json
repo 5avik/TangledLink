@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "render": "Compose Canvas and Compose animation; no Lottie/Rive dependency and no raster frame sequences required.",
+  "accessibility": {
+    "reduceMotion": "Static scene and static portal; no particles, pulsing or rotating decoration.",
+    "manualSetting": "If automatic system animation scale is not reliably available in the current stack, add a stored Reduce effects option.",
+    "lifecycle": "Run decorative animations only when screen is visible and lifecycle RESUMED."
+  },
+  "portal": {
+    "sizeDp": 224,
+    "minimumTouchTargetDp": 48,
+    "ringStrokeDp": 3,
+    "disconnected": "Static dim world ring, start action from existing contract.",
+    "connecting": "Slow indeterminate arc only if real Connecting is exposed by current state source. Otherwise omit this state.",
+    "connected": "Solid world ring; optional restrained 4000 ms pulse, static under reduced motion.",
+    "requestPending": "A brief presentation response to touch is not proof of VPN connecting/connected.",
+    "stateOwnership": "No animation callback starts/stops VPN or sets isRunning."
+  },
+  "decorations": {
+    "original": {
+      "type": "two static bezier highlights or none; source scene already has ribbons",
+      "particles": 0
+    },
+    "sakura": {
+      "type": "petal paths, not emojis",
+      "maxParticles": 8,
+      "travelDurationMs": 14000,
+      "opacity": 0.22
+    },
+    "aurora": {
+      "type": "one soft gradient overlay near outer sky",
+      "periodMs": 14000,
+      "opacity": 0.12
+    },
+    "cyberpunk": {
+      "type": "short rain strokes at edges",
+      "maxParticles": 16,
+      "travelDurationMs": 2400,
+      "opacity": 0.12
+    }
+  }
+}

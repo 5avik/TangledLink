@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<string name="email_address">Email</string>
+<string name="email_code_title">Verify your email</string>
+<string name="email_code_help">Enter the six-digit code from your email. It is valid for 10 minutes. You can paste the code.</string>
+<string name="email_code">Verification code</string>
+<string name="email_verify">Confirm</string>
+<string name="email_send">Send code</string>
+<string name="email_resend">Resend code</string>
+<string name="email_resend_wait">Resend in %1$d s</string>
+<string name="email_invalid_code">Incorrect code. Check the six digits and try again.</string>
+<string name="email_expired_code">The code has expired. Request a new code.</string>
+<string name="email_attempts">Too many attempts. Request a new code after the waiting period.</string>
+<string name="email_wait">Please wait before requesting another code.</string>
+<string name="email_network_error">Unable to complete verification. Check your connection and try again.</string>
+<string name="email_bind">Bind email</string>
+<string name="email_confirmed">Verified email: %1$s</string>
+<string name="email_refresh">Load email status</string>
+<string name="email_already_bound">An email is already bound. Refresh your profile.</string>
+</resources>

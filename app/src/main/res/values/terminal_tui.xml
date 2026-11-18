@@ -1,0 +1,9 @@
+<resources>
+    <string name="terminal_tui_node">Node</string>
+    <string name="terminal_tui_rx">RX · Download</string>
+    <string name="terminal_tui_tx">TX · Upload</string>
+    <string name="terminal_tui_peak">Peak RX+TX</string>
+    <string name="terminal_tui_missing" translatable="false">—</string>
+    <string name="terminal_tui_elapsed">%1$02d:%2$02d:%3$02d</string>
+    <string name="terminal_tui_enter" translatable="false">[Enter]</string>
+</resources>

@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "packageName": "tangledlink-themes-v1",
+  "created": "2026-11-16",
+  "integrationStatus": "not integrated; source Android project unchanged",
+  "generator": "Built-in image generation, one call per scene",
+  "masterResolution": {
+    "requested": [
+      1440,
+      3200
+    ],
+    "actual": [
+      841,
+      1870
+    ],
+    "upscaled": false
+  },
+  "brandSource": "Local TangledLink site assets/logo-mark.webp, not a newly generated logo",
+  "brandVerification": "Local source inspected; current app.tngl.pro not accessible during preparation",
+  "defaultThemeId": "original",
+  "themeIds": [
+    "original",
+    "sakura",
+    "aurora",
+    "cyberpunk"
+  ],
+  "runtimeBytes": 411436,
+  "assets": [
+    {
+      "resourceId": "tngl_bg_aurora",
+      "kind": "background",
+      "path": "android/res/drawable-nodpi/tngl_bg_aurora.webp",
+      "width": 841,
+      "height": 1870,
+      "bytes": 69636,
+      "sha256": "6df87dd0be85a9c6787c74e09fe950b40c5c245b5165e7ceb9160ecfbd81ebae",
+      "target": "app/src/main/res/drawable-nodpi/tngl_bg_aurora.webp",
+      "provenance": "Built-in image generation; native PNG preserved in masters; optimized WebP export"
+    },
+    {
+      "resourceId": "tngl_bg_cyberpunk",
+      "kind": "background",
+      "path": "android/res/drawable-nodpi/tngl_bg_cyberpunk.webp",
+      "width": 841,
+      "height": 1870,
+      "bytes": 115722,
+      "sha256": "9d301a9e9ea42bad861245525254b5bc83733c7ef91d41886725fac3ce47525b",
+      "target": "app/src/main/res/drawable-nodpi/tngl_bg_cyberpunk.webp",
+      "provenance": "Built-in image generation; native PNG preserved in masters; optimized WebP export"
+    },
+    {
+      "resourceId": "tngl_bg_original",
+      "kind": "background",
+      "path": "android/res/drawable-nodpi/tngl_bg_original.webp",
+      "width": 841,
+      "height": 1870,
+      "bytes": 36232,
+      "sha256": "3a0a00c251198dd3d7f8fda83fb436aeac4674f26500103c1259c06d8ac777ee",
+      "target": "app/src/main/res/drawable-nodpi/tngl_bg_original.webp",
+      "provenance": "Built-in image generation; native PNG preserved in masters; optimized WebP export"
+    },
+    {
+      "resourceId": "tngl_bg_sakura",
+      "kind": "background",
+      "path": "android/res/drawable-nodpi/tngl_bg_sakura.webp",
+      "width": 841,
+      "height": 1870,
+      "bytes": 85430,
+      "sha256": "59165e9b17922c73e9a25410054c3599f9ff0841fff1df75cf8c9204a47dc3ca",
+      "target": "app/src/main/res/drawable-nodpi/tngl_bg_sakura.webp",
+      "provenance": "Built-in image generation; native PNG preserved in masters; optimized WebP export"
+    },
+    {
+      "resourceId": "tngl_brand_mark",
+      "kind": "brand",
+      "path": "android/res/drawable-nodpi/tngl_brand_mark.webp",
+      "width": 256,
+      "height": 240,
+      "bytes": 38038,
+      "sha256": "09ea5e653546335476601f2ec9c23b4db9ce17b34b596ff7c11ccfe1e1bfb178",
+      "target": "app/src/main/res/drawable-nodpi/tngl_brand_mark.webp",
+      "provenance": "Existing local site brand mark, resized preserving alpha and aspect ratio"
+    },
+    {
+      "resourceId": "tngl_preview_aurora",
+      "kind": "preview",
+      "path": "android/res/drawable-nodpi/tngl_preview_aurora.webp",
+      "width": 360,
+      "height": 800,
+      "bytes": 15118,
+      "sha256": "a2c9868ba9cac9aabe5599e9c5d66e027dbb839dadefe155aa903e85f70ead7a",
+      "target": "app/src/main/res/drawable-nodpi/tngl_preview_aurora.webp",
+      "provenance": "Built-in image generation; native PNG preserved in masters; optimized WebP export"
+    },
+    {
+      "resourceId": "tngl_preview_cyberpunk",
+      "kind": "preview",
+      "path": "android/res/drawable-nodpi/tngl_preview_cyberpunk.webp",
+      "width": 360,
+      "height": 800,
+      "bytes": 21690,
+      "sha256": "2dc55348b1c10064c7bb85f5153d4c2d0b9bb3e57d31c40dde4187bbd89f2d95",
+      "target": "app/src/main/res/drawable-nodpi/tngl_preview_cyberpunk.webp",
+      "provenance": "Built-in image generation; native PNG preserved in masters; optimized WebP export"
+    },
+    {
+      "resourceId": "tngl_preview_original",
+      "kind": "preview",
+      "path": "android/res/drawable-nodpi/tngl_preview_original.webp",
+      "width": 360,
+      "height": 800,
+      "bytes": 9562,
+      "sha256": "e03c180aa32c19b68f2d10da13f7b25ac3fb7869fe8112ac0b5d2d3d09661814",
+      "target": "app/src/main/res/drawable-nodpi/tngl_preview_original.webp",
+      "provenance": "Built-in image generation; native PNG preserved in masters; optimized WebP export"
+    },
+    {
+      "resourceId": "tngl_preview_sakura",
+      "kind": "preview",
+      "path": "android/res/drawable-nodpi/tngl_preview_sakura.webp",
+      "width": 360,
+      "height": 800,
+      "bytes": 20008,
+      "sha256": "e0e4d33d0440cff25293b9aff6869d2847812aac107b9ead30f55087b778cc65",
+      "target": "app/src/main/res/drawable-nodpi/tngl_preview_sakura.webp",
+      "provenance": "Built-in image generation; native PNG preserved in masters; optimized WebP export"
+    }
+  ],
+  "effects": "Procedural Compose paths/gradients: no additional raster layers required for first version"
+}

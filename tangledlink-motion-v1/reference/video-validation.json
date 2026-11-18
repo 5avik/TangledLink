@@ -1,0 +1,62 @@
+[
+  {
+    "world": "original",
+    "width": 720,
+    "height": 1600,
+    "fps": 24,
+    "seconds": 12,
+    "frames": 288,
+    "audioStreams": 0,
+    "bytes": 1337253,
+    "sha256": "5c9e679daedf49b8818b76827052044548c2cbf094b24c956c2fc2ced9b18f1b",
+    "rendererPhase0Equals1": true,
+    "lastToFirstMae90x200": 0.33631,
+    "meanAdjacentFrameMae90x200": 0.07998,
+    "maxAdjacentFrameMae90x200": 0.30944
+  },
+  {
+    "world": "sakura",
+    "width": 720,
+    "height": 1600,
+    "fps": 24,
+    "seconds": 12,
+    "frames": 288,
+    "audioStreams": 0,
+    "bytes": 1983167,
+    "sha256": "c3c70dbd57ddac708ca347967ec1e4a62132df06771cde395bee965d15a0b6f6",
+    "rendererPhase0Equals1": true,
+    "lastToFirstMae90x200": 0.48302,
+    "meanAdjacentFrameMae90x200": 0.15576,
+    "maxAdjacentFrameMae90x200": 0.42928
+  },
+  {
+    "world": "aurora",
+    "width": 720,
+    "height": 1600,
+    "fps": 24,
+    "seconds": 12,
+    "frames": 288,
+    "audioStreams": 0,
+    "bytes": 2150016,
+    "sha256": "a8a08c9ab6df715d438e30eddd4d3375ca14b9ec5d771a9d923ff85c7e7d4fe0",
+    "rendererPhase0Equals1": true,
+    "lastToFirstMae90x200": 0.46589,
+    "meanAdjacentFrameMae90x200": 0.10308,
+    "maxAdjacentFrameMae90x200": 0.38104
+  },
+  {
+    "world": "cyberpunk",
+    "width": 720,
+    "height": 1600,
+    "fps": 24,
+    "seconds": 12,
+    "frames": 288,
+    "audioStreams": 0,
+    "bytes": 2369166,
+    "sha256": "448be6917df0556dfd76a012bccd6b0c4be3d120354d0d1b9dfab5cc8c7acf35",
+    "rendererPhase0Equals1": true,
+    "lastToFirstMae90x200": 0.52281,
+    "meanAdjacentFrameMae90x200": 0.14958,
+    "maxAdjacentFrameMae90x200": 0.47656
+  }
+]

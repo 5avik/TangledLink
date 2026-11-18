@@ -20,3 +20,12 @@ capture/
 /signing.properties
 *.keystore
 *.jks
+
+# Local credentials, runtime databases and release staging
+**/.env
+**/.env.local
+**/.env.production
+*.sqlite
+*.sqlite-*
+*.db
+/release-assets/

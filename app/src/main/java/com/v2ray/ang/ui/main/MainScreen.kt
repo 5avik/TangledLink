@@ -1,51 +1,8 @@
 package com.v2ray.ang.ui.main
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import com.v2ray.ang.R
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.v2ray.ang.dto.entities.ProfileItem
-import com.v2ray.ang.ui.compose.QRCodeDialog
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(
@@ -53,266 +10,31 @@ fun MainScreen(
     onAction: (MainAction) -> Unit,
     onNavigate: (MainDestination) -> Unit,
 ) {
-    val uiState by mainViewModel.uiState.collectAsStateWithLifecycle()
-    val groups = uiState.groups
-    val isLoading by mainViewModel.isLoading.collectAsStateWithLifecycle()
-    val isRunning = uiState.isRunning
-    val displayText = mainViewModel.formatStatus(uiState.status)
-    val selectedGuid = uiState.selectedGuid
-    val doubleColumnDisplay = uiState.doubleColumnDisplay
-    val confirmRemove = uiState.confirmRemove
-    val shareQRCodeBitmap = uiState.shareQRCodeBitmap
-
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-    var showSearch by rememberSaveable { mutableStateOf(false) }
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    var showDelAllConfirm by remember { mutableStateOf(false) }
-    var showDelDuplicateConfirm by remember { mutableStateOf(false) }
-    var showDelInvalidConfirm by remember { mutableStateOf(false) }
-    var showRemoveConfirm by rememberSaveable(stateSaver = ServerDeleteTarget.Saver) {
-        mutableStateOf<ServerDeleteTarget?>(null)
-    }
-
-    var shareTarget by remember { mutableStateOf<Triple<String, ProfileItem, Boolean>?>(null) }
-    val removeServer: (String, String) -> Unit = { guid, profileName ->
-        if (confirmRemove) {
-            showRemoveConfirm = ServerDeleteTarget(guid, profileName)
-        } else {
-            onAction(MainAction.RemoveServer(guid))
+    val state by mainViewModel.uiState.collectAsStateWithLifecycle()
+    val email by mainViewModel.emailVerification.uiState.collectAsStateWithLifecycle()
+    val recovery by mainViewModel.recoveryState.collectAsStateWithLifecycle()
+    PremiumTheme {
+        AuthPortalHost(state.showTnglLoginDialog, state.authSuccessSequence,
+            home = { PremiumShell(mainViewModel, onAction, onNavigate) }
+        ) { exiting ->
+            TnglLoginDialog(busy=state.authBusy || email.busy || exiting,
+                portalLoading=!email.visible && (state.authBusy || email.busy) && !exiting,
+                error=state.authError ?: emailError(email.error),
+                onForgot={onAction(MainAction.OpenRecovery)},
+                onRegister={id,password,address->onAction(MainAction.SubmitTnglCredentials(id,password,null,registration=true,email=address))},
+                onConfirm={id,password,code->onAction(MainAction.SubmitTnglCredentials(id,password,code))})
         }
-    }
-
-    val pagerState = rememberPagerState(
-        initialPage = 0,
-        pageCount = { groups.size.coerceAtLeast(1) }
-    )
-
-    // Reapply restored input when the Activity is recreated with a new ViewModel.
-    LaunchedEffect(Unit) {
-        onAction(MainAction.Search(searchQuery))
-    }
-
-    val lazyListStates = remember { mutableStateMapOf<String, LazyListState>() }
-    val lazyGridStates = remember { mutableStateMapOf<String, LazyGridState>() }
-
-    LaunchedEffect(groups) {
-        val validGroupIds = groups.map { it.id }.toSet()
-        lazyListStates.keys.retainAll(validGroupIds)
-        lazyGridStates.keys.retainAll(validGroupIds)
-    }
-
-    LaunchedEffect(groups, uiState.selectedGroupId) {
-        if (groups.isEmpty()) return@LaunchedEffect
-        val selectedIndex = groups.indexOfFirst { it.id == uiState.selectedGroupId }
-            .takeIf { it >= 0 } ?: 0
-        if (!pagerState.isScrollInProgress && pagerState.settledPage != selectedIndex) {
-            pagerState.scrollToPage(selectedIndex)
+        recovery?.let { RecoveryDialog(it,onAction) }
+        if(state.showBindEmail) BindEmailDialog(email.busy,email.error,onAction)
+        if(email.visible) EmailVerificationScreen(email,onAction)
+        if (state.showPasswordDialog) {
+            TnglPasswordDialog(busy=state.authBusy,error=state.authError,
+                onDismiss={onAction(MainAction.DismissPasswordDialog)},
+                onConfirm={current,next->onAction(MainAction.ChangePassword(current,next))})
         }
-    }
-
-    val latestGroups by rememberUpdatedState(groups)
-
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.settledPage }
-            .distinctUntilChanged()
-            .collect { page ->
-                val currentGroups = latestGroups
-                if (page in currentGroups.indices) {
-                    onAction(MainAction.SelectGroup(currentGroups[page].id))
-                }
-            }
-    }
-
-    MainDialogs(
-        showDelAllConfirm = showDelAllConfirm,
-        onDismissDelAll = { showDelAllConfirm = false },
-        onConfirmDelAll = { showDelAllConfirm = false; onAction(MainAction.RemoveAllServers) },
-        showDelDuplicateConfirm = showDelDuplicateConfirm,
-        onDismissDelDuplicate = { showDelDuplicateConfirm = false },
-        onConfirmDelDuplicate = { showDelDuplicateConfirm = false; onAction(MainAction.RemoveDuplicateServers) },
-        showDelInvalidConfirm = showDelInvalidConfirm,
-        onDismissDelInvalid = { showDelInvalidConfirm = false },
-        onConfirmDelInvalid = { showDelInvalidConfirm = false; onAction(MainAction.RemoveInvalidServers) },
-        showRemoveConfirm = showRemoveConfirm,
-        onDismissRemove = { showRemoveConfirm = null },
-        onConfirmRemove = { guid -> showRemoveConfirm = null; onAction(MainAction.RemoveServer(guid)) }
-    )
-
-    if (uiState.showTnglLoginDialog) {
-        TnglLoginDialog(
-            onConfirm = { token ->
-                onAction(MainAction.SubmitTnglToken(token))
-            }
-        )
-    }
-
-    if (uiState.showTnglUpdateDialog && uiState.updateResult != null) {
-        TnglUpdateDialog(
-            updateResult = uiState.updateResult!!,
-            onConfirmUpdate = { url ->
-                onAction(MainAction.DownloadUpdate(url))
-            },
-            onDismiss = {
-                onAction(MainAction.DismissUpdateDialog)
-            }
-        )
-    }
-
-    if (shareTarget != null) {
-        val (guid, profile, more) = shareTarget!!
-        ShareMethodDialog(
-            guid = guid,
-            profile = profile,
-            more = more,
-            onDismiss = { shareTarget = null },
-            onAction = onAction,
-            onRemove = removeServer,
-        )
-    }
-    if (shareQRCodeBitmap != null) {
-        QRCodeDialog(bitmap = shareQRCodeBitmap, onDismiss = { onAction(MainAction.DismissQRCodeDialog) })
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            MainDrawerContent(
-                drawerState = drawerState,
-                onNavigate = { route ->
-                    scope.launch { drawerState.close() }
-                    onNavigate(route)
-                }
-            )
-        }
-    ) {
-        Scaffold(
-            contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
-            containerColor = MaterialTheme.colorScheme.surface,
-            topBar = {
-                MainTopBar(
-                    isLoading = isLoading,
-                    showSearch = showSearch,
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { query: String ->
-                        searchQuery = query
-                        onAction(MainAction.Search(query))
-                    },
-                    onSearchClose = {
-                        searchQuery = ""
-                        onAction(MainAction.Search(""))
-                        showSearch = false
-                    },
-                    onSearchToggle = { show: Boolean -> showSearch = show },
-                    onMenuClick = { scope.launch { drawerState.open() } },
-                    onAction = onAction,
-                    onMoreMenuAction = { action ->
-                        when (action) {
-                            MainMoreMenuAction.UpdateSubscriptions -> onAction(MainAction.UpdateSubscriptions)
-                            MainMoreMenuAction.ChangeAccount -> onAction(MainAction.ChangeAccount)
-                            MainMoreMenuAction.RoutingSettings -> onNavigate(MainDestination.Routing)
-                        }
-                    }
-                )
-            },
-            bottomBar = {
-                if (!showSearch) {
-                    MainBottomBar(
-                        displayText = displayText,
-                        isRunning = isRunning,
-                        onAction = onAction
-                    )
-                }
-            },
-            floatingActionButton = {},
-        ) { innerPadding ->
-            if (groups.isNotEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .consumeWindowInsets(innerPadding)
-                        .imePadding()
-                ) {
-                    if (groups.size > 1) {
-                        GroupTabBar(
-                            groups = groups,
-                            selectedTabIndex = pagerState.currentPage.coerceIn(0, groups.lastIndex),
-                            mainViewModel = mainViewModel,
-                            onTabClick = { targetIndex ->
-                                scope.launch {
-                                    pagerState.navigateToPageOptimized(
-                                        targetPage = targetIndex,
-                                        animateAdjacentPage = true
-                                    )
-                                }
-                            }
-                        )
-                    }
-
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
-                        userScrollEnabled = true,
-                        beyondViewportPageCount = 1,
-                        key = { page -> groups.getOrNull(page)?.id ?: "group-page-$page" }
-                    ) { page ->
-                        val group = groups.getOrNull(page) ?: return@HorizontalPager
-
-                        GroupPagerPage(
-                            groupId = group.id,
-                            mainViewModel = mainViewModel,
-                            selectedGuid = selectedGuid,
-                            locateTarget = uiState.locateTarget,
-                            doubleColumnDisplay = doubleColumnDisplay,
-                            searchQuery = searchQuery,
-                            lazyListStates = lazyListStates,
-                            lazyGridStates = lazyGridStates,
-                            onSelectServer = { guid -> onAction(MainAction.SelectServer(guid)) },
-                            onEditServer = { guid, profile -> onAction(MainAction.EditServer(guid, profile)) },
-                            onShareServer = { guid, profile ->
-                                shareTarget = Triple(guid, profile, false)
-                            },
-                            onMoreServer = { guid, profile ->
-                                shareTarget = Triple(guid, profile, true)
-                            },
-                            onRemoveServer = removeServer,
-                            usageInfo = group.usageInfo,
-                            groupTitle = group.remarks,
-                            onOpenLink = { url -> onAction(MainAction.OpenSubscriptionLink(url)) },
-                            contentPadding = PaddingValues(
-                                start = 0.dp,
-                                top = 0.dp,
-                                end = 0.dp,
-                                bottom = 16.dp
-                            )
-                        )
-                    }
-                }
-            } else if (!isLoading) {
-                Column(
-                    modifier = Modifier.fillMaxSize()
-                        .padding(innerPadding)
-                        .consumeWindowInsets(innerPadding)
-                        .imePadding()
-                        .verticalScroll(rememberScrollState())
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
-                ) {
-                    Icon(
-                        painterResource(R.drawable.ic_privacy_24dp),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(56.dp)
-                    )
-                    Text(stringResource(R.string.home_empty_title), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-                    Text(stringResource(R.string.home_empty_summary), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-                    Button(onClick = { onAction(MainAction.UpdateSubscriptions) }) {
-                        Text(stringResource(R.string.tngl_login_button))
-                    }
-                }
-            }
+        state.updateResult?.takeIf {state.showTnglUpdateDialog}?.let { result ->
+            TnglUpdateDialog(result,onConfirmUpdate={onAction(MainAction.DownloadUpdate(it))},
+                onDismiss={onAction(MainAction.DismissUpdateDialog)})
         }
     }
 }

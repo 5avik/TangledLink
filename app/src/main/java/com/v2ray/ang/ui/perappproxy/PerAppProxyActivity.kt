@@ -4,6 +4,18 @@ import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import com.v2ray.ang.util.AppIconFetcher
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +37,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,6 +91,7 @@ class PerAppProxyActivity : BaseComponentActivity() {
         val perAppProxyEnabled by viewModel.perAppProxyEnabled.collectAsStateWithLifecycle()
         val bypassApps by viewModel.bypassApps.collectAsStateWithLifecycle()
 
+        com.v2ray.ang.ui.main.PremiumTheme {
         PerAppProxyScreen(
             apps = apps,
             isLoading = isLoading,
@@ -102,6 +116,29 @@ class PerAppProxyActivity : BaseComponentActivity() {
                 toastSuccess(R.string.toast_success)
             }
         )
+        }
+    }
+}
+
+@Composable
+private fun PremiumAppItem(app: AppInfo, throughVpn: Boolean, enabled: Boolean, toggle: ()->Unit) {
+    val context=LocalContext.current
+    val icon=remember(app.packageName) {
+        ImageRequest.Builder(context).data("appicon:${app.packageName}")
+            .fetcherFactory(AppIconFetcher.Factory(context)).build()
+    }
+    Surface(shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.surface) {
+        Row(Modifier.fillMaxWidth().toggleable(throughVpn,enabled=enabled,role=Role.Switch,onValueChange={toggle()}).padding(16.dp),
+            verticalAlignment=Alignment.CenterVertically) {
+            AsyncImage(icon,null,Modifier.size(40.dp),contentScale=ContentScale.Fit,
+                error=painterResource(R.drawable.ic_image_24dp))
+            Column(Modifier.weight(1f).padding(horizontal=16.dp)) {
+                Text(app.appName,style=MaterialTheme.typography.titleMedium)
+                Text(stringResource(if(!enabled)R.string.premium_rules_disabled else if(throughVpn)R.string.premium_via_vpn else R.string.premium_without_vpn),
+                    style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(throughVpn,onCheckedChange=null,enabled=enabled)
+        }
     }
 }
 
@@ -135,7 +172,7 @@ fun PerAppProxyScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0),
+
         topBar = {
             AppTopBar(
                 title = stringResource(R.string.per_app_proxy_settings),
@@ -194,87 +231,32 @@ fun PerAppProxyScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .imePadding()
         ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.per_app_proxy_settings_enable),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Switch(
-                            checked = perAppProxyEnabled,
-                            modifier = Modifier.scale(0.65f),
-                            onCheckedChange = onPerAppProxyChanged,
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.onSecondary,
-                                checkedTrackColor = MaterialTheme.colorScheme.secondary
-                            )
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.switch_bypass_apps_mode),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Switch(
-                            checked = bypassApps,
-                            modifier = Modifier.scale(0.65f),
-                            onCheckedChange = onBypassAppsChanged,
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.onSecondary,
-                                checkedTrackColor = MaterialTheme.colorScheme.secondary
-                            )
-                        )
-                    }
-                    IconButton(onClick = onInfoClick) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_about_24dp),
-                            contentDescription = stringResource(R.string.acc_per_app_proxy_information),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+            Column(Modifier.padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                com.v2ray.ang.ui.main.SettingsToggle(
+                    stringResource(R.string.per_app_proxy_settings_enable),
+                    stringResource(R.string.premium_routing_saved),
+                    perAppProxyEnabled,onPerAppProxyChanged)
+                com.v2ray.ang.ui.main.SettingsToggle(
+                    stringResource(R.string.switch_bypass_apps_mode),
+                    stringResource(if(bypassApps) R.string.premium_bypass_note else R.string.premium_only_note),
+                    bypassApps,onBypassAppsChanged)
+                TextButton(onClick=onInfoClick) { Text(stringResource(R.string.acc_per_app_proxy_information)) }
             }
-            AppDivider()
 
             LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScrollbar(listState),
-                contentPadding = NavigationBarsBottomPadding()
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(items = apps, key = { it.packageName }) { app ->
-                    val checked = blacklist.contains(app.packageName)
-                    AppListItem(
-                        appName = app.appName,
-                        packageName = app.packageName,
-                        icon = null,
-                        checked = checked,
-                        onCheckedChange = { onToggleApp(app.packageName) }
-                    )
-                    ItemDivider()
+                    val throughVpn = if (bypassApps) app.packageName !in blacklist else app.packageName in blacklist
+                    PremiumAppItem(app,throughVpn,perAppProxyEnabled) { onToggleApp(app.packageName) }
                 }
             }
         }

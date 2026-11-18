@@ -81,6 +81,18 @@
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="app.tngl.pro" android:path="/billing/return" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tangledlink" android:host="billing" android:path="/return" />
+            </intent-filter>
 
             <meta-data
                 android:name="android.app.shortcuts"
@@ -132,6 +144,9 @@
             android:windowSoftInputMode="stateUnchanged|adjustResize" />
         <activity
             android:name=".ui.settings.SettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.themes.ThemePickerActivity"
             android:exported="false" />
         <activity
             android:name=".ui.perappproxy.PerAppProxyActivity"
@@ -313,7 +328,7 @@
             android:name=".service.QSTileService"
             android:exported="true"
             android:foregroundServiceType="specialUse"
-            android:icon="@drawable/ic_stat_name"
+            android:icon="@drawable/ic_tngl_status"
             android:label="@string/app_tile_name"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             android:process=":daemon">
