@@ -22,7 +22,7 @@ class AccountScreenTest {
         compose.onNodeWithText(label(R.string.premium_password)).performScrollTo().performClick()
         compose.onNodeWithText(label(R.string.premium_account)).performScrollTo().performClick()
         compose.runOnIdle {
-            assertEquals(listOf(MainAction.ShowPasswordDialog,MainAction.ChangeAccount),actions)
+            assertEquals(listOf(MainAction.RefreshEmail,MainAction.ShowPasswordDialog,MainAction.ChangeAccount),actions)
             login.value="other-user"
         }
         compose.onNodeWithText("svk").assertDoesNotExist()
@@ -32,6 +32,19 @@ class AccountScreenTest {
         compose.onNodeWithText(label(R.string.premium_password)).performScrollTo().assertIsNotEnabled()
         compose.onNodeWithContentDescription(label(R.string.premium_account_back)).performScrollTo().performClick()
         compose.runOnIdle {assertEquals(1,backs)}
+    }
+    @Test fun confirmedAddressAndBindingActionComeFromServerState() {
+        val address=mutableStateOf<String?>(null)
+        val actions=mutableListOf<MainAction>()
+        compose.setContent {
+            PremiumTheme {AccountScreen("member",null,{actions.add(it)},{},
+                verifiedEmail=address.value,emailLoaded=true)}
+        }
+        compose.onNodeWithText(label(R.string.email_bind)).performScrollTo().performClick()
+        compose.runOnIdle {assertEquals(MainAction.ShowBindEmail,actions.last());address.value="verified@example.com"}
+        compose.onNodeWithText(InstrumentationRegistry.getInstrumentation().targetContext.getString(
+            R.string.email_confirmed,"verified@example.com")).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(label(R.string.email_bind)).assertDoesNotExist()
     }
     @Test fun subscriptionCardShowsUnknownActiveExpiredAndDepletedData() {
         val info=mutableStateOf<SubscriptionUsageInfo?>(null)

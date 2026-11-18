@@ -66,7 +66,8 @@ internal fun PremiumShell(vm: MainViewModel, action: (MainAction)->Unit, navigat
                     contentInsets=padding, bottomPadding=bottomClearance, account={selectTab("account")})
                 "account" -> AccountScreen(state.accountLogin,
                     state.groups.firstOrNull {it.id==com.v2ray.ang.AppConfig.TNGL_SUB_ID}?.usageInfo,
-                    action, {selectTab("more")}, padding, bottomClearance)
+                    action, {selectTab("more")}, padding, bottomClearance,
+                    verifiedEmail=state.verifiedEmail,emailLoaded=state.emailLoaded)
             }
         }
     }

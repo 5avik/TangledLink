@@ -111,7 +111,7 @@ test('payment retry API authenticates and passes only the session account',async
  const code=auth.invite('retry-user');await auth.activate('retry-user',code,'test-password-long');
  const session=await auth.login('retry-user','test-password-long');
  let calls=0;
- const api=createApiServer({authStore:auth,billingStore:{plan:PLAN},lavaStore:{
+ const api=createApiServer({emailStore:{emailFor:()=>null},authStore:auth,billingStore:{plan:PLAN},lavaStore:{
   resume:async(account,id)=>{
    calls++;assert.equal(account,'retry-user');assert.equal(id,'TL-owned');
    return {id,account,status:'pending',paymentUrl:'https://pay.lava.top/fresh'};
@@ -141,7 +141,7 @@ test('API binds orders to bearer account; only CSRF-authenticated admin confirms
   const panel={getClient:async email=>{assert.equal(email,'svk');return data;},
     setExpiry:async(e,b,t)=>{data.client.expiryTime=t;return {};}};
   const b=createBilling(options(panel));
-  const api=createApiServer({authStore:auth,billingStore:b,panelClient:panel,
+  const api=createApiServer({emailStore:{emailFor:()=>null},authStore:auth,billingStore:b,panelClient:panel,
     subscriptionReader:async(base, subId)=>{assert.equal(subId,'different_subid');return {body:'test-config',info:'upload=0;download=0;total=0;expire=0'};}});
   const admin=createAdminServer({authStore:auth,billingStore:b});
   const listen=async s=>{await new Promise(r=>s.listen(0,'127.0.0.1',r));return 'http://127.0.0.1:'+s.address().port;};

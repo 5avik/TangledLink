@@ -27,7 +27,9 @@ import java.util.Date
 internal fun AccountScreen(
     login:String?, info:SubscriptionUsageInfo?, action:(MainAction)->Unit, back:()->Unit,
     contentInsets:PaddingValues=PaddingValues(0.dp), bottomPadding:Dp=0.dp,
+    verifiedEmail:String?=null, emailLoaded:Boolean=false,
 ) {
+    androidx.compose.runtime.LaunchedEffect(login){if(login!=null)action(MainAction.RefreshEmail)}
     val colors=MaterialTheme.colorScheme
     val locale=androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     LazyColumn(Modifier.fillMaxSize(),
@@ -91,6 +93,11 @@ internal fun AccountScreen(
                     }
                 }
             }
+        }
+        item {
+            if(verifiedEmail!=null) Text(stringResource(R.string.email_confirmed,verifiedEmail),color=colors.onSurface)
+            else SettingsItem(stringResource(if(emailLoaded)R.string.email_bind else R.string.email_refresh),null,
+                {action(if(emailLoaded)MainAction.ShowBindEmail else MainAction.RefreshEmail)},enabled=login!=null)
         }
         item { SettingsItem(stringResource(R.string.premium_password),null,
             {action(MainAction.ShowPasswordDialog)},enabled=login!=null,icon=R.drawable.ic_lock_24dp) }

@@ -36,13 +36,14 @@ class TnglLoginDialogTest {
         var submitted: Pair<String,String>? = null
         compose.setContent {
             StaticAuthTheme {
-                TnglLoginDialog(onRegister={id,password->submitted=id to password},
+                TnglLoginDialog(onRegister={id,password,email->assertEquals("buyer@example.com",email);submitted=id to password},
                     onConfirm={_,_,_->throw AssertionError("Registration must not log in or activate")})
             }
         }
         compose.onNodeWithText(context.getString(R.string.auth_registration)).performScrollTo().performClick()
         compose.onNodeWithText(context.getString(R.string.auth_id)).performTextInput("new-user")
         compose.onNodeWithText(context.getString(R.string.auth_password)).performTextInput("test-password-123")
+        compose.onNodeWithText(context.getString(R.string.email_address)).performScrollTo().performTextInput("buyer@example.com")
         compose.onNodeWithText(context.getString(R.string.registration_submit)).performScrollTo().performClick()
         compose.runOnIdle { assertEquals("new-user" to "test-password-123",submitted) }
     }

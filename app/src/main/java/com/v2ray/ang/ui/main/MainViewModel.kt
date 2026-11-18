@@ -106,6 +106,7 @@ class MainViewModel(
         )
     )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    internal val emailVerification = EmailVerificationController(viewModelScope,ioDispatcher)
     private val billing = BillingController(viewModelScope, ioDispatcher,
         com.v2ray.ang.handler.TnglBillingClient, onPaid = { refreshAccountAccess(); updateTnglSubscription() })
     private val premiumStore = PremiumStore(application)
@@ -340,6 +341,13 @@ class MainViewModel(
             is MainAction.UpdateGroupSubscription -> updateTnglSubscription()
             MainAction.ChangeAccount -> changeAccount()
             is MainAction.SubmitTnglCredentials -> submitCredentials(action)
+            is MainAction.SubmitEmailCode -> emailVerification.submit(action.code)
+            MainAction.ResendEmailCode -> emailVerification.resend()
+            MainAction.CancelEmailCode -> emailVerification.cancel()
+            MainAction.RefreshEmail -> refreshEmail()
+            MainAction.ShowBindEmail -> { emailVerification.cancel(); _uiState.update{it.copy(showBindEmail=true)} }
+            MainAction.DismissBindEmail -> { emailVerification.cancel(); _uiState.update{it.copy(showBindEmail=false)} }
+            is MainAction.BindEmail -> bindEmail(action.email)
             MainAction.ShowPasswordDialog -> _uiState.update { it.copy(showPasswordDialog = true, authError = null) }
             MainAction.DismissPasswordDialog -> if (!uiState.value.authBusy) _uiState.update { it.copy(showPasswordDialog = false, authError = null) }
             is MainAction.ChangePassword -> changePassword(action.current, action.newPassword)
@@ -695,15 +703,24 @@ class MainViewModel(
             _uiState.update { it.copy(authError = validation) }
             return
         }
+        _uiState.update { it.copy(authError = null) }
+        emailVerification.start({ code ->
+            TnglAuthClient.emailAuthentication(action.id.trim(),action.password,action.email,
+                action.registration,action.activationCode?.trim(),code)
+        }) { result ->
+            TnglAuthClient.acceptEmailSession(result)
+            finishCredentials(action.id.trim())
+        }
+    }
+
+    private fun finishCredentials(login:String) {
         _uiState.update { it.copy(authBusy = true, authError = null) }
         viewModelScope.launch {
             try {
                 withContext(ioDispatcher) {
-                    if (action.registration) TnglAuthClient.register(action.id.trim(), action.password)
-                    else TnglAuthClient.login(action.id.trim(), action.password, action.activationCode?.trim())
                     MmkvManager.setTnglUserToken(null)
                     val subItem = SubscriptionItem(
-                        remarks = action.id.trim(),
+                        remarks = login,
                         url = TnglAuthClient.SUBSCRIPTION_URL, enabled = true, autoUpdate = true
                     )
                     MmkvManager.encodeSubscription(AppConfig.TNGL_SUB_ID, subItem)
@@ -717,7 +734,7 @@ class MainViewModel(
                     if (dataSource.getSelectServer() !in servers) servers.firstOrNull()?.let(dataSource::setSelectServer)
                 }
                 val access = withContext(ioDispatcher) { runCatching { TnglAuthClient.accountStatus() }.getOrDefault(com.v2ray.ang.handler.AccountAccess()) }
-                _uiState.update { it.copy(showTnglLoginDialog = false, accountAccess = access) }
+                _uiState.update { it.copy(showTnglLoginDialog = false, accountAccess = access, verifiedEmail = null, emailLoaded = false, showBindEmail = false) }
                 if (billingReturnPending) {
                     billingReturnPending = false
                     billing.returnFromPayment()
@@ -727,6 +744,29 @@ class MainViewModel(
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) { _uiState.update { it.copy(authError = authMessage(error)) } }
             finally { _uiState.update { it.copy(authBusy = false) } }
+        }
+    }
+
+    private fun refreshEmail() {
+        val token=TnglSessionStore.token()?:return
+        viewModelScope.launch {
+            try {
+                val address=withContext(ioDispatcher){TnglAuthClient.verifiedEmail(token)}
+                if(TnglSessionStore.token()==token)_uiState.update{it.copy(verifiedEmail=address,emailLoaded=true)}
+            } catch(e:CancellationException){throw e}
+            catch(_:Exception){if(TnglSessionStore.token()==token)_uiState.update{it.copy(emailLoaded=false)}}
+        }
+    }
+    private fun bindEmail(address:String) {
+        val token=TnglSessionStore.token()?:return
+        emailVerification.start({code->
+            if(TnglSessionStore.token()!=token)throw TnglAuthException("session_expired")
+            TnglAuthClient.bindEmail(address,code,token)
+        }) {
+            if(TnglSessionStore.token()==token) {
+                _uiState.update{it.copy(showBindEmail=false)}
+                refreshEmail()
+            }
         }
     }
 
@@ -750,6 +790,8 @@ class MainViewModel(
     }
 
     private fun changeAccount() {
+        emailVerification.cancel()
+        _uiState.update{it.copy(verifiedEmail=null,emailLoaded=false,showBindEmail=false)}
         viewModelScope.launch(ioDispatcher) {
             TnglAuthClient.logout()
             MmkvManager.setTnglUserToken(null)

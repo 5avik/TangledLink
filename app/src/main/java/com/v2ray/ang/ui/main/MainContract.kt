@@ -33,6 +33,9 @@ data class MainUiState(
     val showPasswordDialog: Boolean = false,
     val authBusy: Boolean = false,
     val authError: Int? = null,
+    val verifiedEmail: String? = null,
+    val emailLoaded: Boolean = false,
+    val showBindEmail: Boolean = false,
     val accountAccess: com.v2ray.ang.handler.AccountAccess = com.v2ray.ang.handler.AccountAccess(),
     val trialBusy: Boolean = false,
     val trialError: Int? = null,
@@ -112,7 +115,14 @@ sealed interface MainAction {
     data object RefreshBilling : MainAction
     data object OpenBillingPayment : MainAction
     data object ChangeAccount : MainAction
-    data class SubmitTnglCredentials(val id: String, val password: String, val activationCode: String?, val registration: Boolean = false) : MainAction
+    data class SubmitTnglCredentials(val id: String, val password: String, val activationCode: String?, val registration: Boolean = false, val email: String? = null) : MainAction
+    data class SubmitEmailCode(val code:String):MainAction
+    data object ResendEmailCode:MainAction
+    data object CancelEmailCode:MainAction
+    data object RefreshEmail:MainAction
+    data object ShowBindEmail:MainAction
+    data object DismissBindEmail:MainAction
+    data class BindEmail(val email:String):MainAction
     data object StartTrial : MainAction
     data object RefreshAccount : MainAction
     data object ShowPasswordDialog : MainAction

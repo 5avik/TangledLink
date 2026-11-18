@@ -1,3 +1,5 @@
+import {createEmailAuth,emailRequired} from './email-auth.mjs';
+import { openWebEmail } from './web-email.mjs';
 import { createServer } from 'node:http';
 import { createAuth, ApiError } from './auth.mjs';
 import { subscription } from './upstream.mjs';
@@ -12,6 +14,11 @@ const auth = createAuth(process.env.AUTH_DB ?? '/var/lib/tngl-auth/auth.sqlite')
 const webBilling = lava && process.env.WEB_BILLING_KEY ? createWebBilling({
   path: process.env.BILLING_DB ?? '/var/lib/tngl-auth/billing.sqlite',
   key: process.env.WEB_BILLING_KEY, billing, lava
+}) : null;
+const webEmail = process.env.CREDENTIALS_DIRECTORY && process.env.WEB_BILLING_KEY ? openWebEmail({
+  database: '/var/lib/tngl-auth/web-email.sqlite',
+  credentials: process.env.CREDENTIALS_DIRECTORY + '/gmail.json',
+  key: process.env.WEB_BILLING_KEY
 }) : null;
 const buckets = new Map();
 let working = 0;
@@ -40,8 +47,9 @@ async function json(req) {
     return value;
   } catch { throw new ApiError(400, 'invalid_json'); }
 }
-export function createApiServer({ authStore = auth, billingStore = billing, panelClient = panel, subscriptionReader = subscription, lavaStore = lava, webBillingStore = webBilling, membershipStore = membership } = {}) {
+export function createApiServer({ authStore = auth, billingStore = billing, panelClient = panel, subscriptionReader = subscription, lavaStore = lava, webBillingStore = webBilling, membershipStore = membership, emailStore = webEmail } = {}) {
 const auth = authStore;
+const emailFlow=emailStore?createEmailAuth({auth,email:emailStore,membership:membershipStore}):null;
 return createServer(async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -81,9 +89,51 @@ return createServer(async (req, res) => {
       return reply(200, {ok:true});
     }
     const token = (req.headers.authorization ?? '').replace(/^Bearer /, '');
+    if (path.startsWith('/v1/web-auth/') || path.startsWith('/v1/mobile-auth/')) {
+      const web=path.startsWith('/v1/web-auth/');
+      if (!emailFlow) throw new ApiError(503,'email_unavailable');
+      if (web) {
+        if (!webBillingStore) throw new ApiError(503,'email_unavailable');
+        webBillingStore.authenticate(req.headers['x-web-billing-key']);
+      }
+      const client=web?String(req.headers['x-web-client-ip']??ip).slice(0,64):ip;
+      const operation=path.split('/').at(-1);
+      if (req.method==='GET' && operation==='email') return reply(200,emailFlow.address(token));
+      if (req.method!=='POST') throw new ApiError(404,'not_found');
+      limit('email-auth:'+client,20);
+      if (!web && operation==='register') limit('register:'+client,5);
+      const data=await json(req);
+      if (operation==='bind') return reply(200,await emailFlow.bind(token,data));
+      if (typeof data.id==='string') limit('email-auth-account:'+data.id.slice(0,128),15);
+      if (working>=4) throw new ApiError(429,'rate_limited');
+      working++;
+      try {
+        if(operation==='register')return reply(200,await emailFlow.register(data,{web}));
+        if(operation==='login')return reply(200,await emailFlow.login(data));
+        throw new ApiError(404,'not_found');
+      } finally {working--;}
+    }
     if (req.method === 'GET' && path === '/v1/account') {
       const session=auth.session(token);
-      return reply(200,membershipStore ? await membershipStore.status(session.account) : {managed:false,trialAvailable:false});
+      const account = membershipStore ? await membershipStore.status(session.account) : { managed:false, trialAvailable:false };
+      if (!account.managed && panelClient && webBillingStore && req.headers['x-web-billing-key']) {
+        webBillingStore.authenticate(req.headers['x-web-billing-key']);
+        try {
+          const { client, inboundIds, usedTraffic } = await panelClient.getClient(session.account, { allowDetached:true });
+          const accessEnabled = client.enable && inboundIds.length > 0 &&
+            (client.totalGB === 0 || usedTraffic < client.totalGB);
+          const expiresAt = client.expiryTime > 0 ? client.expiryTime : null;
+          const subscribed = !accessEnabled ? false
+            : client.expiryTime === 0 ? true
+            : expiresAt === null ? undefined
+            : expiresAt > Date.now();
+          return reply(200, { ...account, subscribed, expiresAt });
+        } catch (error) {
+          if (!(error instanceof ApiError)) throw error;
+          // Keep the cabinet usable when 3x-ui cannot confirm the legacy subscription.
+        }
+      }
+      return reply(200, account);
     }
     if (req.method === 'POST' && path === '/v1/trial') {
       const session=auth.session(token);
@@ -130,7 +180,8 @@ return createServer(async (req, res) => {
       if (path === '/v1/register') {
         limit('register:'+ip,5);
         if (!membershipStore) throw new ApiError(503,'registration_unavailable');
-        return reply(200,await auth.register(data.id,data.password,membershipStore.provision));
+        if(!emailFlow)throw new ApiError(503,'email_unavailable');
+        return reply(200,await emailFlow.register(data));
       }
       if (path === '/v1/password') {
         limit('password:' + auth.session(token).account, 10);
@@ -139,17 +190,22 @@ return createServer(async (req, res) => {
       }
       // Activated accounts authenticate locally even while the control panel is down.
       // First activation and protected config/billing operations still verify the panel.
-      const verify = () => panelClient ? panelClient.getClient(data.id) : subscriptionReader(base, data.id);
+      if(!emailFlow)throw new ApiError(503,'email_unavailable');
+      const verify = async () => {
+        await (panelClient ? panelClient.getClient(data.id) : subscriptionReader(base, data.id));
+        await emailFlow.verifyLogin(data.id,data.password,data.emailCode);
+      };
       const session = path === '/v1/login'
-        ? await auth.login(data.id, data.password)
+        ? await emailFlow.login(data)
         : await auth.activate(data.id, data.code, data.password, verify);
       reply(200, session);
     } finally { working--; }
   } catch (error) {
     if (!res.headersSent) {
-      if (error.status === 429) res.setHeader('Retry-After', '900');
+      if(error.code==='email_required')return reply(200,emailRequired());
+      if (error.status === 429) res.setHeader('Retry-After', String(error.retryAfterSeconds??900));
       reply(error instanceof ApiError ? error.status : 500,
-        { error: error instanceof ApiError ? error.code : 'internal_error' });
+        { error: error instanceof ApiError ? error.code : 'internal_error', ...(error.retryAfterSeconds?{retryAfterSeconds:error.retryAfterSeconds}:{}) });
     } else res.destroy();
   }
 });

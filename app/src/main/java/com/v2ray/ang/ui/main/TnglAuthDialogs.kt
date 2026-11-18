@@ -28,7 +28,7 @@ private fun AuthField(value: String, onValueChange: (String) -> Unit, label: Int
         enabled = !busy, modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         visualTransformation = if (secret) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
-        keyboardOptions = KeyboardOptions(keyboardType = if (secret) KeyboardType.Password else KeyboardType.Ascii)
+        keyboardOptions = KeyboardOptions(keyboardType = if (secret) KeyboardType.Password else if (label == R.string.email_address) KeyboardType.Email else KeyboardType.Ascii)
     )
 }
 
@@ -41,12 +41,13 @@ private fun AuthError(error: Int?) {
 fun TnglLoginDialog(
     busy: Boolean = false,
     error: Int? = null,
-    onRegister: ((String, String) -> Unit)? = null,
+    onRegister: ((String, String, String) -> Unit)? = null,
     onConfirm: (String, String, String?) -> Unit
 ) {
     var id by rememberSaveable { mutableStateOf("") }
     var activation by rememberSaveable { mutableStateOf(false) }
     var registration by rememberSaveable { mutableStateOf(false) }
+    var email by rememberSaveable { mutableStateOf("") }
     // Passwords and one-time codes deliberately stay out of saved instance state.
     var password by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
@@ -87,6 +88,7 @@ fun TnglLoginDialog(
                     AuthField(id, { id = it }, R.string.auth_id, busy)
                     if (activation) AuthField(code, { code = it }, R.string.auth_activation_code, busy, secret = true)
                     AuthField(password, { password = it }, if (activation) R.string.auth_new_password else R.string.auth_password, busy, secret = true)
+                    if(registration) AuthField(email,{email=it},R.string.email_address,busy)
                     AuthError(error)
                     TextButton(enabled = !busy, onClick = {
                         registration = false
@@ -97,7 +99,7 @@ fun TnglLoginDialog(
                         Text(stringResource(if (activation) R.string.auth_login_mode else R.string.auth_activate))
                     }
                     BrandButton(modifier = Modifier.fillMaxWidth(), enabled = !busy,
-                        onClick = { if (registration) onRegister?.invoke(id,password) else onConfirm(id, password, if (activation) code else null) }) {
+                        onClick = { if (registration) onRegister?.invoke(id,password,email) else onConfirm(id, password, if (activation) code else null) }) {
                         Text(stringResource(if (busy) R.string.auth_working else if (registration) R.string.registration_submit else if (activation) R.string.auth_activate_submit else R.string.tngl_login_button))
                     }
                     OutlinedButton(onClick = {

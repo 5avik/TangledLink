@@ -19,7 +19,7 @@ test('activated account login survives panel outage, while config access still f
  auth.invite('pending-member');
  let panelCalls=0;
  const panel={getClient:async()=>{panelCalls++;throw new ApiError(503,'panel_unavailable');}};
- const api=createApiServer({authStore:auth,panelClient:panel,billingStore:null,lavaStore:null,webBillingStore:null,
+ const api=createApiServer({emailStore:{emailFor:()=>null},authStore:auth,panelClient:panel,billingStore:null,lavaStore:null,webBillingStore:null,
   subscriptionReader:()=>assert.fail('Subscription must not bypass a failed panel lookup')});
  const root=await listen(api);
  try{
@@ -45,7 +45,7 @@ test('first activation still requires a verified panel client and can retry afte
  const auth=createAuth(':memory:');
  const code=auth.invite('new-member');
  let unavailable=true,calls=0;
- const api=createApiServer({authStore:auth,billingStore:null,lavaStore:null,webBillingStore:null,panelClient:{
+ const api=createApiServer({emailStore:{emailFor:()=>null},authStore:auth,billingStore:null,lavaStore:null,webBillingStore:null,panelClient:{
   getClient:async id=>{assert.equal(id,'new-member');calls++;if(unavailable)throw new ApiError(503,'panel_unavailable');return {};}
  }});
  const root=await listen(api);

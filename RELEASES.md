@@ -1,7 +1,7 @@
 # Stable and test releases
 
-Current test prerelease: **0.9.8-test** (v0.9.8-test, versionCode 17 / APK code 4000017).
-Release notes: [RELEASE_NOTES_0.9.8-test.md](RELEASE_NOTES_0.9.8-test.md).
+Current test prerelease: **0.9.9-test** (v0.9.9-test, versionCode 18 / APK code 4000018).
+Release notes: [RELEASE_NOTES_0.9.9-test.md](RELEASE_NOTES_0.9.9-test.md).
 
 GitHub Releases belong to the repository, not individual branches.
 Selecting test as the release target does not isolate the release from stable clients.

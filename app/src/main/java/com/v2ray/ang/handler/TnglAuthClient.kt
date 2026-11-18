@@ -9,7 +9,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-class TnglAuthException(val errorCode: String) : IOException(errorCode)
+class TnglAuthException(val errorCode: String, val retryAfterSeconds: Long? = null) : IOException(errorCode)
 
 data class AccountAccess(val managed:Boolean=false,val subscribed:Boolean=false,val trialAvailable:Boolean=false)
 
@@ -26,8 +26,35 @@ object TnglAuthClient {
         token?.let { builder.header("Authorization", "Bearer $it") }
         client.newCall(builder.build()).execute().use { response ->
             val json = runCatching { JSONObject(response.body?.string().orEmpty()) }.getOrNull()
-            if (!response.isSuccessful) throw TnglAuthException(json?.optString("error") ?: "server_error")
+            if (!response.isSuccessful) throw TnglAuthException(json?.optString("error") ?: "server_error",
+                (json?.optLong("retryAfterSeconds", -1)?.takeIf { it>=0 } ?: response.header("Retry-After")?.toLongOrNull()))
             return json ?: throw IOException("Invalid authentication response")
+        }
+    }
+    fun emailAuthentication(id:String,password:String,email:String?,registration:Boolean,activation:String?,code:String?): EmailAuthResult {
+        val body=JSONObject().put("id",id).put("password",password)
+        email?.let{body.put("email",it)}
+        code?.let{body.put("emailCode",it)}
+        activation?.let{body.put("code",it)}
+        val response=post(if(activation!=null) "/v1/activate" else if(registration) "/v1/mobile-auth/register" else "/v1/mobile-auth/login",body)
+        if(response.optBoolean("emailRequired")) return EmailAuthResult(required=true,retrySeconds=response.optLong("retryAfterSeconds",60))
+        return EmailAuthResult(token=response.getString("token"),expiresAt=response.getLong("expiresAt"))
+    }
+    fun acceptEmailSession(result:EmailAuthResult) {
+        TnglSessionStore.save(requireNotNull(result.token),result.expiresAt)
+    }
+    fun bindEmail(email:String,code:String?,token:String): EmailAuthResult {
+        val body=JSONObject().put("email",email)
+        code?.let{body.put("emailCode",it)}
+        val response=post("/v1/mobile-auth/bind",body,token)
+        return EmailAuthResult(required=response.optBoolean("emailRequired"),retrySeconds=response.optLong("retryAfterSeconds",60))
+    }
+    fun verifiedEmail(token:String):String? {
+        val request=Request.Builder().url(BASE_URL+"/v1/mobile-auth/email").header("Authorization","Bearer "+token).build()
+        client.newCall(request).execute().use {response->
+            val data=runCatching{JSONObject(response.body.string())}.getOrNull()
+            if(!response.isSuccessful)throw TnglAuthException(data?.optString("error")?:"server_error")
+            return if(data==null || data.isNull("email"))null else data.getString("email")
         }
     }
     fun login(id: String, password: String, activationCode: String?) {
