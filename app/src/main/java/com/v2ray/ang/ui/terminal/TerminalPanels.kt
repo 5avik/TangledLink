@@ -23,7 +23,7 @@ import com.v2ray.ang.R
 import com.v2ray.ang.ui.compose.LocalThemeConfig
 import com.v2ray.ang.ui.main.ServerRowUiModel
 import com.v2ray.ang.ui.main.TrafficUiState
-import com.v2ray.ang.ui.main.countryFlags
+import com.v2ray.ang.ui.main.serverCountryName
 import com.v2ray.ang.ui.main.formatTrafficSpeed
 
 @Composable
@@ -81,11 +81,11 @@ private fun TuiField(label: String, value: String, accent: Boolean = false) {
 internal fun TerminalServerCard(server: ServerRowUiModel?, open: () -> Unit) {
     val scene = LocalThemeConfig.current.scene
     val label = server?.label
-    val country = countryFlags[label?.countryFlag]
+    val country = serverCountryName(label?.countryFlag)
     val title = when {
         server == null -> stringResource(R.string.premium_no_server)
         label?.automatic == true -> stringResource(R.string.premium_auto_select)
-        country != null -> stringResource(country)
+        country != null -> country
         !label?.detail.isNullOrBlank() -> label.detail
         else -> stringResource(R.string.premium_server)
     }

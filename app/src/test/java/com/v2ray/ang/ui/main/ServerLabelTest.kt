@@ -17,6 +17,22 @@ class ServerLabelTest {
         assertEquals(ServerLabel("🇫🇷",false,"Paris"),serverLabel("🇫🇷 Paris"))
     }
 
+    @Test fun newCountriesUseLocalizedFlagNamesAndRemainSearchable() {
+        val russian = java.util.Locale.forLanguageTag("ru")
+        val rows = listOf(row("pl-tcp", "🇵🇱 tcp"), row("pl-xhttp", "🇵🇱 xhttp"),
+            row("pl-grpc", "🇵🇱 grpc"))
+        assertEquals(listOf("TCP", "XHTTP", "gRPC"), rows.map { it.label.detail })
+        assertEquals("Польша", countryNameFromFlag(rows.first().label.countryFlag, russian))
+        assertEquals("Poland", countryNameFromFlag("🇵🇱", java.util.Locale.ENGLISH))
+        assertEquals("Japan", countryNameFromFlag("🇯🇵", java.util.Locale.ENGLISH))
+        assertNull(countryNameFromFlag("🇿🇿", russian))
+        assertNull(countryNameFromFlag("🇵", russian))
+        assertNull(countryNameFromFlag(null, russian))
+        assertEquals(rows, filterPremiumServers(
+            rows, PremiumBrowserInput("Польша"), emptySet(), emptyMap(), russian,
+        ))
+    }
+
     @Test fun automaticSelectionHasNoRawEmojiOrSubscriptionCountdownInItsLabel() {
         for (name in listOf("🔃 Автовыбор","🔝 АВТОВЫБОР ⏳Осталось 26694d 0h 30m",
             "Авто-выбор","Auto select","AutoSelection")) {

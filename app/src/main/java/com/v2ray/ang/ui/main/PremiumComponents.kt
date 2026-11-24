@@ -31,6 +31,15 @@ internal val countryFlags = linkedMapOf("🇷🇺" to R.string.premium_ru,"🇩�
     "🇳🇱" to R.string.premium_nl,"🇬🇧" to R.string.premium_uk,"🇺🇸" to R.string.premium_us,
     "🇸🇬" to R.string.premium_sg,"🇫🇷" to R.string.premium_fr,"🇷🇴" to R.string.premium_ro)
 @Composable
+internal fun serverCountryName(flag: String?): String? {
+    countryFlags[flag]?.let { return stringResource(it) }
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val locale = androidx.core.os.ConfigurationCompat.getLocales(configuration)[0]
+        ?: java.util.Locale.ROOT
+    return remember(flag, locale) { countryNameFromFlag(flag, locale) }
+}
+
+@Composable
 internal fun ServerCard(row:ServerRowUiModel,selected:Boolean,favorite:Boolean,onSelect:()->Unit,onFavorite:(()->Unit)?,compact:Boolean=false) {
     val accent=MaterialTheme.colorScheme.primary
     Surface(onClick=onSelect,modifier=Modifier.fillMaxWidth().semantics { this.selected=selected },
@@ -38,10 +47,10 @@ internal fun ServerCard(row:ServerRowUiModel,selected:Boolean,favorite:Boolean,o
         border=BorderStroke(1.dp,if(selected)accent.copy(alpha=.65f)else MaterialTheme.colorScheme.outlineVariant)) {
         Row(Modifier.padding(start=18.dp,end=8.dp,top=if(compact)12.dp else 16.dp,bottom=if(compact)12.dp else 16.dp),verticalAlignment=Alignment.CenterVertically) {
             val label = row.label
-            val country = countryFlags[label.countryFlag]
+            val country = serverCountryName(label.countryFlag)
             val title = when {
                 label.automatic -> stringResource(R.string.premium_auto_select)
-                country != null -> stringResource(country)
+                country != null -> country
                 label.detail.isNotBlank() -> label.detail
                 else -> stringResource(R.string.premium_server)
             }
