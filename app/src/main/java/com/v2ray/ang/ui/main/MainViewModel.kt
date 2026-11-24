@@ -152,7 +152,11 @@ class MainViewModel(
                 withContext(defaultDispatcher) {
                     PremiumBrowserState(input, filterPremiumServers(
                         group.rows, input, preferences.favorites,
-                        countryFlags.mapValues { dataSource.getString(it.value) }
+                        countryFlags.mapValues { dataSource.getString(it.value) },
+                        androidx.core.os.ConfigurationCompat.getLocales(
+                            com.v2ray.ang.handler.AppLocaleManager.localizedContext(application)
+                                .resources.configuration
+                        )[0] ?: java.util.Locale.getDefault(),
                     ))
                 }
             }

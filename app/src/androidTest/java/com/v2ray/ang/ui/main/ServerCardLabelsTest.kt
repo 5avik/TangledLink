@@ -35,11 +35,20 @@ class ServerCardLabelsTest {
     private fun row(id:String,name:String)=ServerRowUiModel(id,
         ProfileItem(configType=EConfigType.VLESS),name,"","",20,"")
     private val rows=listOf(row("auto","🔃 Автовыбор ⏳Осталось 26694d"),
-        row("uk","🇬🇧 №1 TCP"),row("ro","🇷🇴 №3 gRPC"))
+        row("uk","🇬🇧 №1 TCP"),row("pl","🇵🇱 XHTTP"),row("ro","🇷🇴 №3 gRPC"))
     private fun label(id:Int)=InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
-    private fun title(row:ServerRowUiModel)=label(when(row.guid){
+    private fun title(row:ServerRowUiModel): String {
+        if (row.guid == "pl") {
+            val config = InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration
+            val locale = androidx.core.os.ConfigurationCompat.getLocales(config)[0]
+            return if (locale?.language == "ru") "Польша" else
+                java.util.Locale.Builder().setRegion("PL").build()
+                    .getDisplayCountry(locale ?: java.util.Locale.ROOT)
+        }
+        return label(when(row.guid){
         "auto"->R.string.premium_auto_select;"uk"->R.string.premium_uk;else->R.string.premium_ro
-    })
+        })
+    }
     private fun card(row:ServerRowUiModel)=compose.onNode(hasText(title(row)) and hasClickAction())
 
     @Composable private fun Fixture() {
@@ -81,6 +90,8 @@ class ServerCardLabelsTest {
     private fun assertLabels() {
         compose.onNodeWithText("TCP").assertExists()
         compose.onNodeWithText("gRPC").assertExists()
+        val poland = rows.first { it.guid == "pl" }
+        compose.onNode(hasText(title(poland)) and hasText("XHTTP") and hasClickAction()).assertExists()
         compose.onNodeWithText("№",substring=true).assertDoesNotExist()
         compose.onNodeWithText(label(R.string.premium_auto_select_note)).assertExists()
         compose.onNodeWithText("🇬🇧 №1 TCP").assertDoesNotExist()
@@ -102,7 +113,7 @@ class ServerCardLabelsTest {
         assertLabels()
         rows.forEach { row -> card(row).assertExists() }
         card(rows.last()).assertIsSelected()
-        compose.onAllNodesWithContentDescription(label(R.string.premium_favorite)).assertCountEquals(3)
+        compose.onAllNodesWithContentDescription(label(R.string.premium_favorite)).assertCountEquals(rows.size)
         compose.onRoot().printToLog("ServerCardLabels")
     }
 
@@ -126,7 +137,7 @@ class ServerCardLabelsTest {
         uk.performSemanticsAction(SemanticsActions.RequestFocus){it()}
         uk.assertIsFocused().performKeyInput {pressKey(Key.Enter)}
         uk.assertIsSelected()
-        val ro=card(rows[2])
+        val ro=card(rows.last())
         ro.performSemanticsAction(SemanticsActions.RequestFocus){it()}
         ro.assertIsFocused().performKeyInput {pressKey(Key.DirectionCenter)}
         ro.assertIsSelected()

@@ -24,8 +24,10 @@ internal fun filterPremiumServers(
     input: PremiumBrowserInput,
     favorites: Set<String>,
     countryNames: Map<String, String>,
+    locale: java.util.Locale = java.util.Locale.getDefault(),
 ): List<ServerRowUiModel> = rows.filter { row ->
-    val country = countryNames[row.label.countryFlag].orEmpty()
+    val flag = row.label.countryFlag
+    val country = (countryNames[flag] ?: countryNameFromFlag(flag, locale)).orEmpty()
     (row.remarks.contains(input.query, true) || row.label.detail.contains(input.query, true) ||
         country.contains(input.query, true)) &&
         (input.filter != 1 || row.guid in favorites) &&
